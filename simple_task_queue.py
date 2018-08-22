@@ -131,7 +131,7 @@ class SimpleTaskQueue(TaskQueue):
         return self._queue.get(task_id)
 
     def add_task(self, task):
-        self._queue[task.id()] = task
+        self._queue[task.task_id()] = task
 
     def remove_task(self, task_id):
         if task_id in self._queue:
