@@ -26,7 +26,7 @@ import collections
 
 class Task(object):
 
-    def __init__(self, task_id, command, create_time, name="", desc="", duration=None, max_attempts=5, dependent_on=None):
+    def __init__(self, task_id, command, create_time, name="", desc="", duration=None, max_attempts=1, dependent_on=None):
         self.__task_id = task_id
         self.cmd = command
         self.name = name
