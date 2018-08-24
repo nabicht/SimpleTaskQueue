@@ -17,7 +17,6 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
  DEALINGS IN THE SOFTWARE.
 """
 
-import datetime
 import uuid
 import collections
 
@@ -27,14 +26,15 @@ import collections
 
 class Task(object):
 
-    def __init__(self, task_id, command, name="", desc="", duration=None, max_attempts=5):
+    def __init__(self, task_id, command, create_time, name="", desc="", duration=None, max_attempts=5, dependent_on=None):
         self.__task_id = task_id
         self.cmd = command
         self.name = name
         self.desc = desc
         self.duration = duration
         self.max_attempts = max_attempts
-        self.created_time = datetime.datetime.now()
+        self.created_time = create_time
+        self.dependent_on = dependent_on if dependent_on is not None else []
         self._attempts = collections.OrderedDict()
         self._most_recent_attempt = None
 
@@ -59,6 +59,54 @@ class Task(object):
     def task_id(self):
         return self.__task_id
 
+    def is_completed(self):
+        completed = False
+        for attempt in self._attempts.itervalues():
+            if attempt.completed():
+                completed = True
+                break
+        return completed
+
+    def in_process(self):
+        in_proc = False
+        if not self.is_completed() and not self.failed():
+            for attempt in self._attempts.itervalues():
+                if attempt.in_process():
+                    in_proc = True
+                    break
+        return in_proc
+
+    def started(self):
+        return len(self._attempts) > 0
+
+    def failed(self):
+        # to be failed, all attempts need to be failed and number of attempts >= max attempts
+        if len(self._attempts) >= self.max_attempts:
+            failed = True
+            for attempt in self._attempts.itervalues():
+                if not attempt.failed():
+                    failed = False
+                    break
+        else:
+            failed = False
+        return failed
+
+    def open_time(self):
+        min_close_time = None
+        for attempt in self._attempts.itervalues():
+            if attempt.completed():
+                if min_close_time is None:
+                    min_close_time = attempt.completed_time
+                else:
+                    min_close_time = min(min_close_time, attempt.completed_time)
+        if min_close_time is not None:
+            return (min_close_time - self.created_time).total_seconds()
+        else:
+            return None
+
+    def num_attempts(self):
+        return len(self._attempts)
+
     def __hash__(self):
         return self.task_id
 
@@ -74,7 +122,7 @@ class TaskAttempt:
         self.start_time = time_stamp
         self._status = TaskAttempt.STARTED
         self._fail_reason = None
-        self._completed_time = None
+        self.completed_time = None
 
     def id(self):
         return self._attempt_id
@@ -85,10 +133,19 @@ class TaskAttempt:
 
     def mark_completed(self, time_stamp):
         self._status = TaskAttempt.COMPLETED
-        self._completed_time = time_stamp
+        self.completed_time = time_stamp
 
-    def has_failed(self):
+    def failed(self):
         return self._status == TaskAttempt.FAILED
+
+    def completed(self):
+        return self._status == TaskAttempt.COMPLETED
+
+    def started(self):
+        return self._status == TaskAttempt.STARTED
+
+    def in_process(self):
+        return TaskAttempt.STARTED <= self._status < TaskAttempt.COMPLETED
 
     def __hash__(self):
         return self._attempt_id
@@ -99,7 +156,7 @@ class TaskQueue(object):
     def __init__(self):
         pass
 
-    def next_task(self):
+    def next_task(self, skip_task_ids=None):
         raise NotImplementedError
 
     def task(self, task_id):
@@ -109,6 +166,9 @@ class TaskQueue(object):
         raise NotImplementedError
 
     def remove_task(self, task_id):
+        raise NotImplementedError
+
+    def task_ids(self):
         raise NotImplementedError
 
     def __len__(self):
@@ -121,11 +181,16 @@ class SimpleTaskQueue(TaskQueue):
         TaskQueue.__init__(self)
         self._queue = collections.OrderedDict()
 
-    def next_task(self):
+    def next_task(self, skip_task_ids=None):
+        task_to_send_back = None
         # this is nasty hack on ordereddict. I can't index it so I just iterate it and return first one
-        for value in self._queue.itervalues():
-            return value
-        return None
+        for task in self._queue.itervalues():
+            if skip_task_ids is not None and task.task_id() in skip_task_ids:
+                continue
+            else:
+                task_to_send_back = task
+                break
+        return task_to_send_back
 
     def task(self, task_id):
         return self._queue.get(task_id)
@@ -136,6 +201,9 @@ class SimpleTaskQueue(TaskQueue):
     def remove_task(self, task_id):
         if task_id in self._queue:
             del self._queue[task_id]
+
+    def task_ids(self):
+        return self._queue.keys()
 
     def __len__(self):
         return len(self._queue)
@@ -153,8 +221,6 @@ class OpenTasks(object):
 
     tasks that have an expected duration associated are being kept separate from those without a duration.
     """
-
-    # TODO this needs to be cleaned up to handle in-process tasks
 
     def __init__(self):
         # two main containers:
@@ -184,7 +250,7 @@ class OpenTasks(object):
         failed_tasks = []
         no_duration = None
         for task in self._no_durations.itervalues():
-            if task.most_recent_attempt().has_failed():
+            if task.most_recent_attempt().failed():
                 if len(task.attempts) >= task.max_attempts:
                     failed_tasks.append(task)
                 else:
@@ -193,20 +259,17 @@ class OpenTasks(object):
 
         with_duration = None
         for task in self._durations.itervalues():
-            if task.most_recent_attempt().has_failed() or current_time - task.most_recent_attempt().start_time > task.duration:
-                if len(task.attempts) >= task.max_attempts:
+            if task.most_recent_attempt().failed() or (current_time - task.most_recent_attempt().start_time).total_seconds() > task.duration:
+                if task.num_attempts() >= task.max_attempts:
                     failed_tasks.append(task)
                 else:
                     with_duration = task
                     break
 
-        # arbitrarily returning no duration failure ahead of with duration here
-        #  but I guess there is a logic to it -- if with duration is because of over duration maybe first job
-        #   comes back successfully in the extra time gained by returning the other one first.
-        if no_duration.created_time <= with_duration.created_time:
-            return no_duration
+        if no_duration is not None and no_duration.created_time <= with_duration.created_time:
+            return no_duration, failed_tasks
         else:
-            return with_duration
+            return with_duration, failed_tasks
 
     def add_task(self, task):
         """
@@ -215,21 +278,18 @@ class OpenTasks(object):
         assert isinstance(task, Task)
         assert task.most_recent_attempt() is not None, "Cannot add task to OpenTasks because no current attempt"
         if task.duration is None:
-            self._no_durations[task.task_id] = task
+            self._no_durations[task.task_id()] = task
         else:
-            self._durations[task.task_id] = task
+            self._durations[task.task_id()] = task
 
-    def remove_task(self, task):
+    def remove_task(self, task_id):
         """
         remove the task from OpenTasks. If task doesn't exist in OpenTask then no-op.
         """
-        assert isinstance(task, Task)
-        if task.duration is None:
-            if task.task_id in self._no_durations:
-                del self._no_durations[task.task_id]
-        else:
-            if task.task_id in self._durations:
-                del self._no_durations[task.task_id]
+        if task_id in self._no_durations:
+            del self._no_durations[task_id]
+        elif task_id in self._durations:
+            del self._durations[task_id]
 
     def get_task(self, task_id):
         # the task doesn't exist here then return none
@@ -237,6 +297,9 @@ class OpenTasks(object):
         if task is None:
             task = self._no_durations.get(task_id)
         return task
+
+    def __len__(self):
+        return len(self._durations) + len(self._no_durations)
 
 
 class TaskManager(object):
@@ -252,6 +315,7 @@ class TaskManager(object):
         self._done[task.task_id] = task
 
     def start_next_attempt(self, runner, current_time):
+        attempt = None
         # if there is one in process that needs to be re-attempted then do that
         next_task, failed_tasks = self._in_process.task_to_retry(current_time)
         # for each failed task: 1) remove from in process, 2) add to done
@@ -259,15 +323,29 @@ class TaskManager(object):
             self._move_task_to_done(task)
 
         if next_task is not None:
-            next_task.attempt_task(runner)
+            attempt = next_task.attempt_task(runner, current_time)
         else:  # if still no next task, get one from the queued up new tasks
-            next_task = self._todo_queue.next_task()
-            # and move this task from todo to in process & create attempt
+            skip_task_ids = set()
+            todo_ids = self._todo_queue.task_ids()
+            # as long as not every task_id in todo_queue is in skip_tasks, we keep trying
+            while not skip_task_ids.issuperset(todo_ids):
+                possible_next_task = self._todo_queue.next_task(skip_task_ids=skip_task_ids)
+                # if any dependency is not done, then we need to continue
+                can_run = True
+                for dependency in possible_next_task.dependent_on:
+                    if not dependency.is_completed():
+                        can_run = False
+                        break
+                if can_run:  # if it can run then all dependencies are completed (or there are no dependencies) so break the while loop, we've found our next task
+                    next_task = possible_next_task
+                    break
+
+            # and move this task from something to do to in process & create attempt
             if next_task is not None:
-                self._todo_queue.remove_task(next_task)
-                next_task.attempt_task(runner)
+                self._todo_queue.remove_task(next_task.task_id())
+                attempt = next_task.attempt_task(runner, current_time)
                 self._in_process.add_task(next_task)
-        return next_task
+        return next_task, attempt
 
     def _find_task(self, task_id, todo=False, in_process=False, done=False):
         task = None
@@ -290,7 +368,15 @@ class TaskManager(object):
             if len(task.attempts) >= task.max_attempts and task.most_recent_attempt.id == attempt_id:
                 self._move_task_to_done(task)
 
-    def complete_attempt(self, task_id, attempt_id):
+    def complete_attempt(self, task_id, attempt_id, time_stamp):
         task = self._find_task(task_id, in_process=True, done=True)
         if task is not None:
-            task.get_attempt(attempt_id).mark_completed()
+            task.get_attempt(attempt_id).mark_completed(time_stamp)
+            if self._find_task(task_id, in_process=True):
+                self._in_process.remove_task(task_id)
+                self._done[task.task_id()] = task
+                return True
+        return False
+
+    def add_task(self, task):
+        self._todo_queue.add_task(task)
