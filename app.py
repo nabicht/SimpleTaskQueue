@@ -46,7 +46,7 @@ task_post_parser.add_argument('dependent_on', dest='dependent_on', location='for
 
 
 # a wrapper that creates a Resource to interact with TaskManager and does some JSON/restful specific stuff
-class TaskWork(Resource):
+class TaskManagement(Resource):
 
     def post(self):
         print "we be posting!"
@@ -63,7 +63,7 @@ class TaskWork(Resource):
         return task.to_json(), 201
 
 
-api.add_resource(TaskWork, '/addtask')
+api.add_resource(TaskManagement, '/addtask')
 
 
 @app.route('/')
