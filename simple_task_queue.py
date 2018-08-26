@@ -130,7 +130,7 @@ class TaskAttempt:
     FAILED = 40
 
     def __init__(self, runner, time_stamp):
-        self._attempt_id = uuid.uuid1()
+        self._attempt_id = uuid.uuid1().hex  # to avoid the whole json serialization of a UUID, i'm just going straight to hex
         self.runner = runner
         self.start_time = time_stamp
         self._status = TaskAttempt.STARTED
