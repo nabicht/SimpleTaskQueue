@@ -39,9 +39,9 @@ task_post_parser.add_argument('description', dest='description', required=False,
                               help='a more in-depth description of the task (optional)')
 task_post_parser.add_argument('duration', dest='duration', required=False, type=float,
                               help='how long, in seconds, the task should run before a new attempt is made. Microseconds are defined to the right of the decimal (optional, with default of no applied duration).')
-task_post_parser.add_argument('max_attempts', dest='max_attempts', location='form', required=False, type=int,
+task_post_parser.add_argument('max_attempts', dest='max_attempts', required=False, type=int,
                               help="The max amount of times you want to try to attempt to run the task (optional, with default of 1)")
-task_post_parser.add_argument('dependent_on', dest='dependent_on', location='form', required=False, action='append',
+task_post_parser.add_argument('dependent_on', dest='dependent_on', required=False, action='append',
                               help="the ID of a task that this task is dependent upon (optional, can be multiple).")
 
 get_next_attempt = reqparse.RequestParser()
