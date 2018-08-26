@@ -392,7 +392,7 @@ class TaskManager(object):
         return False
 
     def add_task(self, task):
-        # all depedencies must exist
+        # all tasks dependent_on must exist
         for task_id in task.dependent_on:
             if self._find_task(task_id, todo=True, in_process=True, done=True) is None:
                 raise UnknownDependencyException()
