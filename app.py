@@ -53,7 +53,6 @@ get_next_attempt.add_argument('runner_id', dest='runner_id', required=True,
 class TaskManagement(Resource):
 
     def post(self):
-        print "we be posting!"
         args = task_post_parser.parse_args()
         task = Task(task_id_creator.id(),
                     args.command,
