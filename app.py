@@ -44,6 +44,10 @@ task_post_parser.add_argument('max_attempts', dest='max_attempts', location='for
 task_post_parser.add_argument('dependent_on', dest='dependent_on', location='form', required=False, action='append',
                               help="the ID of a task that this task is dependent upon (optional, can be multiple).")
 
+get_next_attempt = reqparse.RequestParser()
+get_next_attempt.add_argument('runner_id', dest='runner_id', required=True,
+                              help='The unique identifier of the runner.')
+
 
 # a wrapper that creates a Resource to interact with TaskManager and does some JSON/restful specific stuff
 class TaskManagement(Resource):
@@ -53,7 +57,7 @@ class TaskManagement(Resource):
         args = task_post_parser.parse_args()
         task = Task(task_id_creator.id(),
                     args.command,
-                    datetime.now,
+                    datetime.now(),
                     name=args.name if args.name is not None else "",
                     desc=args.description if args.description is not None else "",
                     duration=args.duration,
@@ -63,8 +67,29 @@ class TaskManagement(Resource):
         return task.to_json(), 201
 
 
-api.add_resource(TaskManagement, '/addtask')
+class AttemptManagement(Resource):
 
+    NO_TASK = {'status': "no task"}
+
+    @staticmethod
+    def _task_attempt_json(task, attempt):
+        return {'status': "task",
+                'task_id': task.task_id(),
+                'command': task.cmd,
+                'attempt_id': attempt.id()}
+
+    def get(self):
+        args = get_next_attempt.parse_args()
+        current_time = datetime.now()
+        task, attempt = task_manager.start_next_attempt(args.runner_id, current_time)
+        if task is not None:
+            return self._task_attempt_json(task, attempt), 200
+        else:
+            return self.NO_TASK, 200
+
+
+api.add_resource(TaskManagement, '/addtask')
+api.add_resource(AttemptManagement, '/getattempt')
 
 @app.route('/')
 def task_queue_overview():
