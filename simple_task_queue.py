@@ -117,6 +117,7 @@ class Task(object):
 
     def to_json(self):
         return {'task_id': self.__task_id,
+                'name': self.name,
                 'command': self.cmd,
                 'description': self.desc,
                 'duration': self.duration,
