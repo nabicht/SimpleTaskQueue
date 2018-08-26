@@ -21,6 +21,11 @@ import uuid
 import collections
 
 
+# Custom Exceptions
+class UnknownDependencyException(Exception):
+    pass
+
+
 # Task states are either to be done or complete
 # TaskAttempt states are in started, confirmed, in-process, completed, failed
 
@@ -109,6 +114,14 @@ class Task(object):
 
     def __hash__(self):
         return self.task_id
+
+    def to_json(self):
+        return {'task_id': self.__task_id,
+                'command': self.cmd,
+                'description': self.desc,
+                'duration': self.duration,
+                'max_attempts': self.max_attempts,
+                'dependent_on': self.dependent_on}
 
 
 class TaskAttempt:
@@ -379,4 +392,8 @@ class TaskManager(object):
         return False
 
     def add_task(self, task):
+        # all depedencies must exist
+        for task_id in task.dependent_on:
+            if self._find_task(task_id, todo=True, in_process=True, done=True) is None:
+                raise UnknownDependencyException()
         self._todo_queue.add_task(task)
