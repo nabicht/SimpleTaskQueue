@@ -29,12 +29,12 @@ def test_task_to_retry_first_started_retry():
     time_stamp = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=5, microsecond=100222)
 
     t1 = Task(1, "run command example", time_stamp, name="example run",
-              desc="this is a bologna command that does nothing", duration=100)
+              desc="this is a bologna command that does nothing", duration=100, max_attempts=3)
     start_time_stamp = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=6, microsecond=100222)
     t1.attempt_task("runner", start_time_stamp)
 
     t2 = Task(2, "run command example 2", time_stamp, name="example run 2",
-              desc="this is a bologna command that does nothing", duration=820)
+              desc="this is a bologna command that does nothing", duration=820, max_attempts=3)
     start_time_stamp = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=6, microsecond=100222)
     t2.attempt_task("runner", start_time_stamp)
 
@@ -53,12 +53,12 @@ def test_task_to_retry_second_started_retry():
     time_stamp = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=5, microsecond=100222)
 
     t1 = Task(1, "run command example", time_stamp, name="example run",
-              desc="this is a bologna command that does nothing", duration=500)
+              desc="this is a bologna command that does nothing", duration=500, max_attempts=3)
     start_time_stamp = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=6, microsecond=100222)
     t1.attempt_task("runner", start_time_stamp)
 
     t2 = Task(2, "run command example 2", time_stamp, name="example run 2",
-              desc="this is a bologna command that does nothing", duration=90)
+              desc="this is a bologna command that does nothing", duration=90, max_attempts=3)
     start_time_stamp = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=8, microsecond=100222)
     t2.attempt_task("runner", start_time_stamp)
 
