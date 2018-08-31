@@ -1,9 +1,11 @@
 from flask import Flask
+from flask import render_template
 from simple_task_queue import TaskManager
 from simple_task_queue import Task
 from flask_restful import Resource, Api
 from flask_restful import reqparse
 from datetime import datetime
+from flask_bootstrap import Bootstrap
 import uuid
 
 
@@ -24,6 +26,7 @@ errors = {
 
 
 app = Flask(__name__)
+Bootstrap(app)
 api = Api(app, catch_all_404s=True, errors=errors)
 
 task_id_creator = TaskIDCreator()
@@ -86,13 +89,66 @@ class AttemptManagement(Resource):
         else:
             return self.NO_TASK, 200
 
+    #def post
+
+
+class MonitorTasks(Resource):
+
+    @staticmethod
+    def _dependent_on_str(dependent_ons):
+        return ", ".join([str(dependent_on) for dependent_on in dependent_ons])
+
+    def get(self, list_type):
+        list_of_tasks = []
+        if list_type.lower() == "todo":
+            to_do = task_manager.todo_tasks()
+            for task in to_do:
+                d = {"id": task.task_id(),
+                     "status": "To Do",
+                     "created": str(task.created_time),
+                     "name": task.name,
+                     "description": task.desc,
+                     "command": task.cmd,
+                     "dependent on": self._dependent_on_str(task.dependent_on),
+                     "duration": task.duration,
+                     "max attempts": task.max_attempts,
+                    }
+                list_of_tasks.append(d)
+        elif list_type.lower() == "inprocess":
+            in_process = task_manager.in_process_tasks()
+            for task in in_process:
+                current_runner = ""
+                if task.most_recent_attempt().in_process():
+                    current_runner = task.most_recent_attempt().runner
+                d = {"id": task.task_id(),
+                     "status": "In Process",
+                     "created": str(task.created_time),
+                     "started": str(task),
+                     "name": task.name,
+                     "description": task.desc,
+                     "command": task.cmd,
+                     "dependent on": self._dependent_on_str(task.dependent_on),
+                     "duration": task.duration,
+                     "attempted": task.num_attempts(),
+                     "attempts left": task.max_attempts - task.num_attempts(),
+                     "attempt open": task.most_recent_attempt().in_process() == True,
+                     "current runner": current_runner
+                    }
+                list_of_tasks.append(d)
+        elif list_type.lower() == "done":
+            pass
+        else:
+            return {"message": "%s is an unknown list type. No tasks to return." % list_type}, 400
+        return {"data": list_of_tasks}, 200
+
 
 api.add_resource(TaskManagement, '/addtask')
-api.add_resource(AttemptManagement, '/getattempt')
+api.add_resource(AttemptManagement, '/attempt')
+api.add_resource(MonitorTasks, '/listtasks/<list_type>')
 
 @app.route('/')
 def task_queue_overview():
-    return 'Hello World!'
+    return render_template('overview.html')
 
 
 if __name__ == '__main__':

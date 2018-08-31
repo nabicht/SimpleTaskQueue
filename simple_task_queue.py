@@ -185,6 +185,9 @@ class TaskQueue(object):
     def task_ids(self):
         raise NotImplementedError
 
+    def all_tasks(self):
+        raise NotImplementedError
+
     def __len__(self):
         raise NotImplementedError
 
@@ -218,6 +221,9 @@ class SimpleTaskQueue(TaskQueue):
 
     def task_ids(self):
         return self._queue.keys()
+
+    def all_tasks(self):
+        return self._queue.values()
 
     def __len__(self):
         return len(self._queue)
@@ -312,6 +318,13 @@ class OpenTasks(object):
             task = self._no_durations.get(task_id)
         return task
 
+    def all_tasks(self):
+        tasks = []
+        tasks.extend(self._durations.values())
+        tasks.extend(self._no_durations.values())
+        # todo unit test sorting
+        return sorted(tasks, key=lambda task: task.created_time)
+
     def __len__(self):
         return len(self._durations) + len(self._no_durations)
 
@@ -325,7 +338,8 @@ class TaskManager(object):
         self._logger = logger
 
     def _move_task_to_done(self, task):
-        self._in_process.remove_task(task)
+        # TODO unit test this
+        self._in_process.remove_task(task.task_id())
         self._done[task.task_id] = task
 
     def start_next_attempt(self, runner, current_time):
@@ -398,3 +412,12 @@ class TaskManager(object):
             if self._find_task(task_id, todo=True, in_process=True, done=True) is None:
                 raise UnknownDependencyException()
         self._todo_queue.add_task(task)
+
+    def done_tasks(self):
+        return self._done.values()
+
+    def todo_tasks(self):
+        return self._todo_queue.all_tasks()
+
+    def in_process_tasks(self):
+        return self._in_process.all_tasks()
