@@ -97,6 +97,22 @@ class Task(object):
         return failed
 
     def open_time(self):
+        # TODO unit test
+        min_close_time = self.finished_time()
+        if min_close_time is not None:
+            return (min_close_time - self.created_time).total_seconds()
+        else:
+            return None
+
+    def started_time(self):
+        # TODO unit test
+        start_time = None
+        if len(self._attempts) > 0:
+            start_time = self._attempts[0].start_time
+        return start_time
+
+    def finished_time(self):
+        # TODO unit test
         min_close_time = None
         for attempt in self._attempts.itervalues():
             if attempt.completed():
@@ -104,10 +120,7 @@ class Task(object):
                     min_close_time = attempt.completed_time
                 else:
                     min_close_time = min(min_close_time, attempt.completed_time)
-        if min_close_time is not None:
-            return (min_close_time - self.created_time).total_seconds()
-        else:
-            return None
+        return min_close_time
 
     def num_attempts(self):
         return len(self._attempts)
@@ -421,3 +434,14 @@ class TaskManager(object):
 
     def in_process_tasks(self):
         return self._in_process.all_tasks()
+
+    def dependencies(self, task_id):
+        dependencies = []
+        tasks = []
+        tasks.extend(self.todo_tasks())
+        tasks.extend(self.in_process_tasks())
+        tasks.extend(self.in_process_tasks())
+        for task in tasks:
+            if task_id in task.dependent_on():
+                dependencies.append()
+        return dependencies
