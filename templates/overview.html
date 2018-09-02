@@ -5,6 +5,7 @@
     {{ super() }}
     <link href="https://cdn.datatables.net/1.10.19/css/dataTables.bootstrap4.min.css" rel="stylesheet">
     <link href="https://cdn.datatables.net/fixedheader/3.1.5/css/fixedHeader.bootstrap4.min.css" rel="stylesheet">
+    <link href="https://cdn.datatables.net/responsive/2.2.3/css/responsive.bootstrap4.min.css" rel="stylesheet">
 {% endblock %}
 
 {% block navbar %}
@@ -17,7 +18,7 @@
     <div class="w-100 p-3">
         <h1>Simple Task Queue</h1>
         <h2>To Do</h2>
-        <table id="todoTaskTable" class="table table-striped table-bordered" style="width:100%" >
+        <table id="todoTaskTable" class="table table-striped table-bordered dt-responsive" style="width:100%" >
             <thead>
                 <tr>
                     <th>Created Time</th>
@@ -49,7 +50,33 @@
             </thead>
         </table>
         <h2>Failed</h2>
-
+        <table id="failedTaskTable" class="table table-striped table-bordered" style="width:100%" >
+            <thead>
+                <tr>
+                    <th>Created Time</th>
+                    <th>Finished Time</th>
+                    <th>Name</th>
+                    <th>Description</th>
+                    <th>Command</th>
+                    <th>Dependencies</th>
+                    <th>Attempts</th>
+                </tr>
+            </thead>
+        </table>
+        <h2>Completed</h2>
+        <table id="completedTaskTable" class="table table-striped table-bordered" style="width:100%" >
+            <thead>
+                <tr>
+                    <th>Created Time</th>
+                    <th>Finished Time</th>
+                    <th>Name</th>
+                    <th>Description</th>
+                    <th>Command</th>
+                    <th>Dependencies</th>
+                    <th>Attempts</th>
+                </tr>
+            </thead>
+        </table>
     </div>
 {% endblock %}
 
@@ -94,6 +121,42 @@
                 {data: "attempts left"},
                 {data: "attempt open"},
                 {data: "current runner"}
+            ]
+        } );
+    });
+    </script>
+    <script>
+    $(document).ready(function() {
+        $('#failedTaskTable').DataTable( {
+            "processing": true,
+            "ajax": "/listtasks/failed",
+            // add column definitions to map your json to the table
+            "columns": [
+                {data: "created"},
+                {data: "finished"},
+                {data: "name"},
+                {data: "description"},
+                {data: "command"},
+                {data: "dependencies"},
+                {data: "attempts"}
+            ]
+        } );
+    });
+    </script>
+    <script>
+    $(document).ready(function() {
+        $('#completedTaskTable').DataTable( {
+            "processing": true,
+            "ajax": "/listtasks/completed",
+            // add column definitions to map your json to the table
+            "columns": [
+                {data: "created"},
+                {data: "finished"},
+                {data: "name"},
+                {data: "description"},
+                {data: "command"},
+                {data: "dependencies"},
+                {data: "attempts"}
             ]
         } );
     });

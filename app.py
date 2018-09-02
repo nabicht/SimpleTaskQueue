@@ -123,7 +123,7 @@ class MonitorTasks(Resource):
                 d = {"id": task.task_id(),
                      "status": "In Process",
                      "created": str(task.created_time),
-                     "started": str(task),
+                     "started": str(task.start_time()),
                      "name": task.name,
                      "description": task.desc,
                      "command": task.cmd,
@@ -131,12 +131,40 @@ class MonitorTasks(Resource):
                      "duration": task.duration,
                      "attempted": task.num_attempts(),
                      "attempts left": task.max_attempts - task.num_attempts(),
-                     "attempt open": task.most_recent_attempt().in_process() == True,
+                     "attempt open": task.most_recent_attempt().in_process() is True,
                      "current runner": current_runner
                     }
                 list_of_tasks.append(d)
-        elif list_type.lower() == "done":
-            pass
+        elif list_type.lower() == "failed":
+            done = task_manager.done_tasks()
+            for task in done:
+                if task.failed():
+                    d = {"id": task.task_id(),
+                         "status": "Failed",
+                         "created": str(task.created_time),
+                         "finished": str(task.finished_time()),
+                         "name": task.name,
+                         "description": task.desc,
+                         "command": task.cmd,
+                         "dependencies": task_manager.dependencies(task.task_id()),
+                         "attempts": task.num_attempts()
+                         }
+                    list_of_tasks.append(d)
+        elif list_type.lower() == "completed":
+            done = task_manager.done_tasks()
+            for task in done:
+                if task.failed():
+                    d = {"id": task.task_id(),
+                         "status": "Completed",
+                         "created": str(task.created_time),
+                         "finished": str(task.finished_time()),
+                         "name": task.name,
+                         "description": task.desc,
+                         "command": task.cmd,
+                         "dependencies": task_manager.dependencies(task.task_id()),
+                         "attempts": task.num_attempts()
+                         }
+                    list_of_tasks.append(d)
         else:
             return {"message": "%s is an unknown list type. No tasks to return." % list_type}, 400
         return {"data": list_of_tasks}, 200
