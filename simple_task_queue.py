@@ -384,32 +384,38 @@ class TaskManager(object):
         # TODO unit test this
         task_id = task.task_id()
         self._in_process.remove_task(task_id)
-        self._logger.debug("Task %s removed from in process tasks." % str(task_id))
+        self._logger.debug("TaskManager._move_task_to_done: Task %s removed from in process tasks." % str(task_id))
         self._done[task.task_id()] = task
-        self._logger.debug("Task %s added to done tasks." % str(task_id))
+        self._logger.debug("TaskManager._move_task_to_done: Task %s added to done tasks." % str(task_id))
 
     def start_next_attempt(self, runner, current_time):
-        self._logger.debug("Starting next attempt for runner %s at %s" % (str(runner), str(current_time)))
+        self._logger.debug("TaskManager.start_next_attempt: Starting next attempt for runner %s at %s" % (str(runner), str(current_time)))
         attempt = None
         # if there is one in process that needs to be re-attempted then do that
         next_task, failed_tasks = self._in_process.task_to_retry(current_time)
         # for each failed task: 1) remove from in process, 2) add to done
         for task in failed_tasks:
-            self._logger.info("Task %s has failed. Moving it to Done." % str(task.task_id()))
+            self._logger.info("TaskManager.start_next_attempt: Task %s has failed. Moving it to Done." % str(task.task_id()))
             self._move_task_to_done(task)
 
         if next_task is not None:
             attempt = next_task.attempt_task(runner, current_time)
+            self._logger.info("TaskManager.start_next_attempt: Created Attempt %s for Task %s. Attempt %d of %d." %
+                              (str(attempt.id()), str(next_task.task.id()), next_task.num_attempts(), next_task.max_attempts))
         else:  # if still no next task, get one from the queued up new tasks
             skip_task_ids = set()
             todo_ids = self._todo_queue.task_ids()
             # as long as not every task_id in todo_queue is in skip_tasks, we keep trying
             while not skip_task_ids.issuperset(todo_ids):
+                # TODO unit test this functionality
                 possible_next_task = self._todo_queue.next_task(skip_task_ids=skip_task_ids)
                 # if any dependency is not done, then we need to continue
                 can_run = True
                 for dependency in possible_next_task.dependent_on:
-                    if not dependency.is_completed():
+                    dependency_task = self._find_task(dependency, todo=True, in_process=True, done=True)
+                    if not dependency_task.is_completed():
+                        self._logger.debug("TaskManager.start_next_attempt: Task %s is dependent on Task %s, which is not completed. Skipping it for now." %
+                                           (str(possible_next_task.task_id()), str(dependency)))
                         can_run = False
                         break
                 if can_run:  # if it can run then all dependencies are completed (or there are no dependencies) so break the while loop, we've found our next task
@@ -418,19 +424,34 @@ class TaskManager(object):
 
             # and move this task from something to do to in process & create attempt
             if next_task is not None:
+                self._logger.debug("TaskManager.start_next_attempt: Task %s is being moved from todo to in process." % str(next_task.task_id()))
                 self._todo_queue.remove_task(next_task.task_id())
-                attempt = next_task.attempt_task(runner, current_time)
                 self._in_process.add_task(next_task)
+                attempt = next_task.attempt_task(runner, current_time)
+                self._logger.info("TaskManager.start_next_attempt: Created Attempt %s for Task %s. Attempt %d of %d." %
+                                  (str(attempt.id()), str(next_task.task.id()), next_task.num_attempts(),
+                                   next_task.max_attempts))
+        self._logger.info("Next attempt is Attempt %s for Task %s. Attempt %d of %d." %
+                          (str(attempt.id()), str(next_task.task.id()), next_task.num_attempts(),
+                           next_task.max_attempts))
         return next_task, attempt
 
     def _find_task(self, task_id, todo=False, in_process=False, done=False):
+        self._logger.debug("TaskManager._find_task: Looking for Task %s in todo = %s, in_process = %s, done = %s" %
+                           (str(task_id), str(todo), str(in_process), str(done)))
         task = None
         if task is None and todo:
             task = self._todo_queue.task(task_id)
+            if task is not None:
+                self._logger.debug("TaskManager._find_task: Task %s found in todo." % str(task_id))
         if task is None and in_process:
             task = self._in_process.get_task(task_id)
+            if task is not None:
+                self._logger.debug("TaskManager._find_task: Task %s found in in_process." % str(task_id))
         if task is None and done:
             task = self._done.get(task_id)
+            if task is not None:
+                self._logger.debug("TaskManager._find_task: Task %s found in done." % str(task_id))
         return task
 
     def fail_attempt(self, task_id, attempt_id):
@@ -440,19 +461,26 @@ class TaskManager(object):
         if task is not None:
             # fail the attempt
             task.get_attempt(attempt_id).mark_failed()
+            self._logger.info("TaskManager.fail_attempt: failed Attempt %s for Task %s." % (str(attempt_id), str(task_id)))
             # if attempts is > max attempts and the attempt that failed is the most recent one then move it to done
             if len(task.attempts) >= task.max_attempts and task.most_recent_attempt.id == attempt_id:
                 self._move_task_to_done(task)
+                self._logger.info("TaskManager.fail_attempt: Task %s Attempt %s is last attempt failed. Moved to done" %
+                                  (str(task_id), str(attempt_id)))
+        else:
+            self._logger.warn("TaskManager.fail_attempt: Task %s not found in in_process or done. Can't fail task not in one of these sets." % str(task_id))
 
     def complete_attempt(self, task_id, attempt_id, time_stamp):
         task = self._find_task(task_id, in_process=True, done=True)
         if task is not None:
             task.get_attempt(attempt_id).mark_completed(time_stamp)
+            self._logger.debug("TaskManager.complete_attempt: completed Attempt %s for Task %s." % (str(attempt_id), str(task_id)))
             if self._find_task(task_id, in_process=True):
-                self._in_process.remove_task(task_id)
-                self._done[task.task_id()] = task
+                self._move_task_to_done(task)
                 return True
-        return False
+        else:
+            self._logger.warn("TaskManager.complete_attempt: Task %s not found in in_process or done. Can't complete task not in one of these sets." % str(task_id))
+            return False
 
     def add_task(self, task):
         # all tasks dependent_on must exist
@@ -460,6 +488,7 @@ class TaskManager(object):
             if self._find_task(task_id, todo=True, in_process=True, done=True) is None:
                 raise UnknownDependencyException()
         self._todo_queue.add_task(task)
+        self._logger.info("TaskManager.add_task: Added Task %s to todo." % str(task.task_id()))
 
     def done_tasks(self):
         return self._done.values()
