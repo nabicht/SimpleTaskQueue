@@ -213,13 +213,17 @@ class SimpleTaskQueue(TaskQueue):
 
     def next_task(self, skip_task_ids=None):
         task_to_send_back = None
-        # this is nasty hack on ordereddict. I can't index it so I just iterate it and return first one
         for task in self._queue.itervalues():
             if skip_task_ids is not None and task.task_id() in skip_task_ids:
+                self._logger.debug("SimpleTaskQueue.next_task: Task %s is in skip_task_ids so skipping it." % str(task.task_id()))
                 continue
             else:
                 task_to_send_back = task
                 break
+        if task_to_send_back is None:
+            self._logger.debug("SimpleTaskQueue.next_task: No next task to return.")
+        else:
+            self._logger.debug("SimpleTaskQueue.next_task: Task %s is the next task." % str(task_to_send_back.task_id()))
         return task_to_send_back
 
     def task(self, task_id):
@@ -231,6 +235,9 @@ class SimpleTaskQueue(TaskQueue):
     def remove_task(self, task_id):
         if task_id in self._queue:
             del self._queue[task_id]
+            self._logger.debug("SimpleTaskQueue.remove_task: removing Task %s." % str(task_id))
+        else:
+            self._logger.debug("SimpleTaskQueue.remove_task: Task %s cannot be removed; not in queue." % str(task_id))
 
     def task_ids(self):
         return self._queue.keys()
