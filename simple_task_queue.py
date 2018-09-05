@@ -320,7 +320,7 @@ class OpenTasks(object):
         retry_task = None
         if no_duration is not None and no_duration.created_time <= with_duration.created_time:
             retry_task = no_duration
-        else:
+        elif with_duration is not None:
             retry_task = with_duration
         if retry_task is None:
             self._logger.debug("OpenTasks.task_to_retry: No task to be retried. Returning it and %d failed tasks" %
