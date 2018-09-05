@@ -180,8 +180,8 @@ class TaskAttempt:
 
 class TaskQueue(object):
 
-    def __init__(self):
-        pass
+    def __init__(self, logger):
+        self._logger = logger
 
     def next_task(self, skip_task_ids=None):
         raise NotImplementedError
@@ -207,8 +207,8 @@ class TaskQueue(object):
 
 class SimpleTaskQueue(TaskQueue):
 
-    def __init__(self):
-        TaskQueue.__init__(self)
+    def __init__(self, logger):
+        TaskQueue.__init__(self, logger)
         self._queue = collections.OrderedDict()
 
     def next_task(self, skip_task_ids=None):
@@ -255,7 +255,8 @@ class OpenTasks(object):
     tasks that have an expected duration associated are being kept separate from those without a duration.
     """
 
-    def __init__(self):
+    def __init__(self, logger):
+        self._logger = logger
         # two main containers:
         #  1) tasks with a duration
         #  2) tasks without a duration
@@ -285,24 +286,42 @@ class OpenTasks(object):
         for task in self._no_durations.itervalues():
             if task.most_recent_attempt().failed():
                 if len(task.attempts) >= task.max_attempts:
+                    self._logger.debug("OpenTasks.task_to_retry: Task %s has failed attempt %d of %d. Treating it as failed." %
+                                       (str(task.task_id()), task.num_attempts(), task.max_attempts))
                     failed_tasks.append(task)
                 else:
+                    self._logger.debug("OpenTasks.task_to_retry: Task %s has failed attempt %d of %d. Should be retried." %
+                                       (str(task.task_id()), task.num_attempts(), task.max_attempts))
                     no_duration = task
                     break
 
         with_duration = None
         for task in self._durations.itervalues():
-            if task.most_recent_attempt().failed() or (current_time - task.most_recent_attempt().start_time).total_seconds() > task.duration:
+            failed = task.most_recent_attempt().failed()
+            timed_out = (current_time - task.most_recent_attempt().start_time).total_seconds() > task.duration
+            if failed or timed_out:
                 if task.num_attempts() >= task.max_attempts:
+                    self._logger.debug("OpenTasks.task_to_retry: Task %s has %s attempt %d of %d. Treating it as failed." %
+                                       (str(task.task_id()), "failed" if failed else "timed out", task.num_attempts(), task.max_attempts))
                     failed_tasks.append(task)
                 else:
+                    self._logger.debug("OpenTasks.task_to_retry: Task %s has %s attempt %d of %d. Should be retried." %
+                        (str(task.task_id()), "failed" if failed else "timed out", task.num_attempts(), task.max_attempts))
                     with_duration = task
                     break
 
+        retry_task = None
         if no_duration is not None and no_duration.created_time <= with_duration.created_time:
-            return no_duration, failed_tasks
+            retry_task = no_duration
         else:
-            return with_duration, failed_tasks
+            retry_task = with_duration
+        if retry_task is None:
+            self._logger.debug("OpenTasks.task_to_retry: No task to be retried. Returning it and %d failed tasks" %
+                               len(failed_tasks))
+        else:
+            self._logger.debug("OpenTasks.task_to_retry: Task %s is oldest task to be retried. Returning it and %d failed tasks" %
+                               (str(retry_task.task_id()), len(failed_tasks)))
+        return retry_task, failed_tasks
 
     def add_task(self, task):
         """
@@ -312,8 +331,10 @@ class OpenTasks(object):
         assert task.most_recent_attempt() is not None, "Cannot add task to OpenTasks because no current attempt"
         if task.duration is None:
             self._no_durations[task.task_id()] = task
+            self._logger.debug("OpenTasks.add_task: Task %s added to no durations." % str(task.task_id()))
         else:
             self._durations[task.task_id()] = task
+            self._logger.debug("OpenTasks.add_task: Task %s added to durations." % str(task.task_id()))
 
     def remove_task(self, task_id):
         """
@@ -321,8 +342,10 @@ class OpenTasks(object):
         """
         if task_id in self._no_durations:
             del self._no_durations[task_id]
+            self._logger.debug("OpenTasks.remove_task: Task %s removed from no durations." % str(task_id))
         elif task_id in self._durations:
             del self._durations[task_id]
+            self._logger.debug("OpenTasks.remove_task: Task %s removed from durations." % str(task_id))
 
     def get_task(self, task_id):
         # the task doesn't exist here then return none
@@ -345,22 +368,27 @@ class OpenTasks(object):
 class TaskManager(object):
 
     def __init__(self, logger):
-        self._todo_queue = SimpleTaskQueue()
-        self._in_process = OpenTasks()
+        self._todo_queue = SimpleTaskQueue(logger)
+        self._in_process = OpenTasks(logger)
         self._done = collections.OrderedDict()
         self._logger = logger
 
     def _move_task_to_done(self, task):
         # TODO unit test this
-        self._in_process.remove_task(task.task_id())
-        self._done[task.task_id] = task
+        task_id = task.task_id()
+        self._in_process.remove_task(task_id)
+        self._logger.debug("Task %s removed from in process tasks." % str(task_id))
+        self._done[task.task_id()] = task
+        self._logger.debug("Task %s added to done tasks." % str(task_id))
 
     def start_next_attempt(self, runner, current_time):
+        self._logger.debug("Starting next attempt for runner %s at %s" % (str(runner), str(current_time)))
         attempt = None
         # if there is one in process that needs to be re-attempted then do that
         next_task, failed_tasks = self._in_process.task_to_retry(current_time)
         # for each failed task: 1) remove from in process, 2) add to done
         for task in failed_tasks:
+            self._logger.info("Task %s has failed. Moving it to Done." % str(task.task_id()))
             self._move_task_to_done(task)
 
         if next_task is not None:
@@ -443,5 +471,5 @@ class TaskManager(object):
         tasks.extend(self.in_process_tasks())
         for task in tasks:
             if task_id in task.dependent_on():
-                dependencies.append()
+                dependencies.append(task_id)
         return dependencies
