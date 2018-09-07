@@ -24,7 +24,6 @@ errors = {
     },
 }
 
-
 app = Flask(__name__)
 Bootstrap(app)
 api = Api(app, catch_all_404s=True, errors=errors)
@@ -50,6 +49,13 @@ task_post_parser.add_argument('dependent_on', dest='dependent_on', required=Fals
 get_next_attempt = reqparse.RequestParser()
 get_next_attempt.add_argument('runner_id', dest='runner_id', required=True,
                               help='The unique identifier of the runner.')
+
+attempt_update = reqparse.RequestParser()
+attempt_update.add_argument('runner_id', dest='runner_id', required=True, help='The unique identifier of the runner.')
+attempt_update.add_argument('task_id', dest='task_id', required=True, help='The unique identifier of the task being attempted.')
+attempt_update.add_argument('attempt_id', dest='attempt_id', required=True, help='The unique identifier of the attempt.')
+attempt_update.add_argument('status', dest='status', required=True, help='Status of attempt: "failed" or "completed".')
+attempt_update.add_argument('message', dest='message', required=False, help='Status of attempt: "failed" or "completed".')
 
 
 # a wrapper that creates a Resource to interact with TaskManager and does some JSON/restful specific stuff
@@ -89,7 +95,17 @@ class AttemptManagement(Resource):
         else:
             return self.NO_TASK, 200
 
-    #def post
+    def put(self):
+        args = attempt_update.parse_args()
+        status = args.status.lower()
+        if status == "failed":
+            task_manager.fail_attempt(args.task_id, args.attempt_id)
+        elif status == "completed":
+            task_manager.complete_attempt(args.task_id, args.attempt_id, datetime.now())
+        else:
+            task_manager.fail_attempt(args.task_id, args.attempt_id)
+            # TODO log this
+            return {"message": "%s is an unknown status. Should be 'completed' or 'failed'. Falling back to failed." % args.status}, 400
 
 
 class MonitorTasks(Resource):
