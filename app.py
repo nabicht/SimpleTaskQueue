@@ -7,6 +7,8 @@ from flask_restful import reqparse
 from datetime import datetime
 from flask_bootstrap import Bootstrap
 import uuid
+import util
+import logging
 
 
 class TaskIDCreator:
@@ -16,6 +18,7 @@ class TaskIDCreator:
 
     def id(self):
         return uuid.uuid1().hex
+
 
 errors = {
     'UnknownDependencyException': {
@@ -30,7 +33,10 @@ api = Api(app, catch_all_404s=True, errors=errors)
 
 task_id_creator = TaskIDCreator()
 
-task_manager = TaskManager(None)
+log_file_name = util.time_stamped_file_name("stq")
+logger = util.basic_logger(log_file_name, file_level=logging.DEBUG, console_level=logging.DEBUG)
+
+task_manager = TaskManager(logger)
 
 task_post_parser = reqparse.RequestParser()
 task_post_parser.add_argument('command', dest='command', required=True,
@@ -128,7 +134,7 @@ class MonitorTasks(Resource):
                      "dependent on": self._dependent_on_str(task.dependent_on),
                      "duration": task.duration,
                      "max attempts": task.max_attempts,
-                    }
+                     }
                 list_of_tasks.append(d)
         elif list_type.lower() == "inprocess":
             in_process = task_manager.in_process_tasks()
@@ -149,7 +155,7 @@ class MonitorTasks(Resource):
                      "attempts left": task.max_attempts - task.num_attempts(),
                      "attempt open": task.most_recent_attempt().in_process() is True,
                      "current runner": current_runner
-                    }
+                     }
                 list_of_tasks.append(d)
         elif list_type.lower() == "failed":
             done = task_manager.done_tasks()
@@ -189,6 +195,7 @@ class MonitorTasks(Resource):
 api.add_resource(TaskManagement, '/addtask')
 api.add_resource(AttemptManagement, '/attempt')
 api.add_resource(MonitorTasks, '/listtasks/<list_type>')
+
 
 @app.route('/')
 def task_queue_overview():
