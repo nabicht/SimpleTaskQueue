@@ -48,4 +48,4 @@ def complete_attempt(server, runner_id, task_id, attempt_id, message=None):
 def get_next_attempt(server, runner_id):
     payload = {'runner_id': runner_id}
     r = requests.get(server + 'attempt', params=payload)
-    print r.text
+    return json.loads(r.text)
