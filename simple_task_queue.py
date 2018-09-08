@@ -401,7 +401,7 @@ class TaskManager(object):
         if next_task is not None:
             attempt = next_task.attempt_task(runner, current_time)
             self._logger.info("TaskManager.start_next_attempt: Created Attempt %s for Task %s. Attempt %d of %d." %
-                              (str(attempt.id()), str(next_task.task.id()), next_task.num_attempts(), next_task.max_attempts))
+                              (str(attempt.id()), str(next_task.task_id()), next_task.num_attempts(), next_task.max_attempts))
         else:  # if still no next task, get one from the queued up new tasks
             skip_task_ids = set()
             todo_ids = self._todo_queue.task_ids()
@@ -416,6 +416,7 @@ class TaskManager(object):
                     if not dependency_task.is_completed():
                         self._logger.debug("TaskManager.start_next_attempt: Task %s is dependent on Task %s, which is not completed. Skipping it for now." %
                                            (str(possible_next_task.task_id()), str(dependency)))
+                        skip_task_ids.add(possible_next_task.task_id())
                         can_run = False
                         break
                 if can_run:  # if it can run then all dependencies are completed (or there are no dependencies) so break the while loop, we've found our next task
@@ -426,14 +427,17 @@ class TaskManager(object):
             if next_task is not None:
                 self._logger.debug("TaskManager.start_next_attempt: Task %s is being moved from todo to in process." % str(next_task.task_id()))
                 self._todo_queue.remove_task(next_task.task_id())
-                self._in_process.add_task(next_task)
                 attempt = next_task.attempt_task(runner, current_time)
+                self._in_process.add_task(next_task)
                 self._logger.info("TaskManager.start_next_attempt: Created Attempt %s for Task %s. Attempt %d of %d." %
-                                  (str(attempt.id()), str(next_task.task.id()), next_task.num_attempts(),
+                                  (str(attempt.id()), str(next_task.task_id()), next_task.num_attempts(),
                                    next_task.max_attempts))
-        self._logger.info("Next attempt is Attempt %s for Task %s. Attempt %d of %d." %
-                          (str(attempt.id()), str(next_task.task.id()), next_task.num_attempts(),
-                           next_task.max_attempts))
+        if attempt is not None:
+            self._logger.info("TaskManager.start_next_attempt: Next attempt is Attempt %s for Task %s. Attempt %d of %d." %
+                              (str(attempt.id()), str(next_task.task_id()), next_task.num_attempts(),
+                               next_task.max_attempts))
+        else:
+            self._logger.info("TaskManager.start_next_attempt: No next task to attempt. Returning None for nex task and None for attempt.")
         return next_task, attempt
 
     def _find_task(self, task_id, todo=False, in_process=False, done=False):
@@ -483,6 +487,7 @@ class TaskManager(object):
             return False
 
     def add_task(self, task):
+        assert isinstance(task, Task)
         # all tasks dependent_on must exist
         for task_id in task.dependent_on:
             if self._find_task(task_id, todo=True, in_process=True, done=True) is None:
