@@ -66,9 +66,3 @@ assert "attempt_id" in attempt_6_dict
 
 # report attempt 6 is done
 report_completed_attempt(SERVER, "runner_e", attempt_6_dict["task_id"], attempt_6_dict['attempt_id'])
-
-
-
-
-
-
