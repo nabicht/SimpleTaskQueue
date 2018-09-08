@@ -32,7 +32,8 @@ def report_failed_task(server, runner_id, task_id, attempt_id, message=None):
                'status': 'failed'}
     if message is not None:
         payload['message'] = message
-    requests.put(server + "attempt", data=payload)
+    r = requests.put(server + "attempt", data=payload)
+    return json.loads(r.text)
 
 
 def report_completed_attempt(server, runner_id, task_id, attempt_id, message=None):
@@ -42,7 +43,8 @@ def report_completed_attempt(server, runner_id, task_id, attempt_id, message=Non
                'status': 'completed'}
     if message is not None:
         payload['message'] = message
-    requests.put(server + "attempt", data=payload)
+    r = requests.put(server + "attempt", data=payload)
+    return json.loads(r.text)
 
 
 def get_next_attempt(server, runner_id):
