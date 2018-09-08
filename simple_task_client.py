@@ -25,7 +25,7 @@ def add_task(server, command, name=None, description=None, dependent_on=None, ma
     return str(response_dict['task_id'])
 
 
-def fail_task(server, runner_id, task_id, attempt_id, message=None):
+def report_failed_task(server, runner_id, task_id, attempt_id, message=None):
     payload = {'runner_id': runner_id,
                'task_id': task_id,
                'attempt_id': attempt_id,
@@ -35,7 +35,7 @@ def fail_task(server, runner_id, task_id, attempt_id, message=None):
     requests.put(server + "attempt", data=payload)
 
 
-def complete_attempt(server, runner_id, task_id, attempt_id, message=None):
+def report_completed_attempt(server, runner_id, task_id, attempt_id, message=None):
     payload = {'runner_id': runner_id,
                'task_id': task_id,
                'attempt_id': attempt_id,
