@@ -292,7 +292,7 @@ class OpenTasks(object):
         no_duration = None
         for task in self._no_durations.itervalues():
             if task.most_recent_attempt().failed():
-                if len(task.attempts) >= task.max_attempts:
+                if task.num_attempts() >= task.max_attempts:
                     self._logger.debug("OpenTasks.task_to_retry: Task %s has failed attempt %d of %d. Treating it as failed." %
                                        (str(task.task_id()), task.num_attempts(), task.max_attempts))
                     failed_tasks.append(task)
@@ -318,7 +318,11 @@ class OpenTasks(object):
                     break
 
         retry_task = None
-        if no_duration is not None and no_duration.created_time <= with_duration.created_time:
+        if no_duration is not None and with_duration is None:
+            retry_task = no_duration
+        elif no_duration is None and with_duration is not None:
+            retry_task = with_duration
+        elif no_duration is not None and no_duration.created_time <= with_duration.created_time:
             retry_task = no_duration
         elif with_duration is not None:
             retry_task = with_duration
@@ -458,16 +462,16 @@ class TaskManager(object):
                 self._logger.debug("TaskManager._find_task: Task %s found in done." % str(task_id))
         return task
 
-    def fail_attempt(self, task_id, attempt_id):
+    def fail_attempt(self, task_id, attempt_id, fail_reason):
         # need to fail the attempt
         # first find the task, should be in in process or done
         task = self._find_task(task_id, in_process=True, done=True)
         if task is not None:
             # fail the attempt
-            task.get_attempt(attempt_id).mark_failed()
+            task.get_attempt(attempt_id).mark_failed(fail_reason)
             self._logger.info("TaskManager.fail_attempt: failed Attempt %s for Task %s." % (str(attempt_id), str(task_id)))
             # if attempts is > max attempts and the attempt that failed is the most recent one then move it to done
-            if len(task.attempts) >= task.max_attempts and task.most_recent_attempt.id == attempt_id:
+            if task.num_attempts() >= task.max_attempts and task.most_recent_attempt().id == attempt_id:
                 self._move_task_to_done(task)
                 self._logger.info("TaskManager.fail_attempt: Task %s Attempt %s is last attempt failed. Moved to done" %
                                   (str(task_id), str(attempt_id)))

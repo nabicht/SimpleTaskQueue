@@ -105,11 +105,11 @@ class AttemptManagement(Resource):
         args = attempt_update.parse_args()
         status = args.status.lower()
         if status == "failed":
-            task_manager.fail_attempt(args.task_id, args.attempt_id)
+            task_manager.fail_attempt(args.task_id, args.attempt_id, "client reported")
         elif status == "completed":
             task_manager.complete_attempt(args.task_id, args.attempt_id, datetime.now())
         else:
-            task_manager.fail_attempt(args.task_id, args.attempt_id)
+            task_manager.fail_attempt(args.task_id, args.attempt_id, "unknown status reported")
             # TODO log this
             return {"message": "%s is an unknown status. Should be 'completed' or 'failed'. Falling back to failed." % args.status}, 400
 
