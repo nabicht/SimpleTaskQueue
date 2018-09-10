@@ -24,7 +24,7 @@ def add_task(server, command, name=None, description=None, dependent_on=None, ma
         payload['max_attempts'] = max_attempts
     if duration is not None:
         payload['duration'] = duration
-    r = requests.post(urljoin(server,  "addtask"), data=payload)
+    r = requests.post(urljoin(server,  "task"), data=payload)
     response_dict = json.loads(r.text)
     return str(response_dict['task_id'])
 

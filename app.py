@@ -52,6 +52,9 @@ task_post_parser.add_argument('max_attempts', dest='max_attempts', required=Fals
 task_post_parser.add_argument('dependent_on', dest='dependent_on', required=False, action='append',
                               help="the ID of a task that this task is dependent upon (optional, can be multiple).")
 
+task_delete_parser = reqparse.RequestParser()
+task_delete_parser.add_argument("task_id", dest="task_id", required=True, help="ID of Task to be deleted.")
+
 get_next_attempt = reqparse.RequestParser()
 get_next_attempt.add_argument('runner_id', dest='runner_id', required=True,
                               help='The unique identifier of the runner.')
@@ -79,6 +82,11 @@ class TaskManagement(Resource):
                     dependent_on=args.dependent_on)
         task_manager.add_task(task)
         return task.to_json(), 201
+
+    def delete(self):
+        args = task_delete_parser.parse_args()
+        task_manager.delete_task(args.task_id)
+
 
 
 class AttemptManagement(Resource):
@@ -192,7 +200,7 @@ class MonitorTasks(Resource):
         return {"data": list_of_tasks}, 200
 
 
-api.add_resource(TaskManagement, '/addtask')
+api.add_resource(TaskManagement, '/task')
 api.add_resource(AttemptManagement, '/attempt')
 api.add_resource(MonitorTasks, '/listtasks/<list_type>')
 
