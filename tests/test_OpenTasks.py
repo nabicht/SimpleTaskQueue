@@ -1,5 +1,5 @@
-from simple_task_queue import Task
-from simple_task_queue import OpenTasks
+from simple_task_server import Task
+from simple_task_server import OpenTasks
 from datetime import datetime
 
 def test_task_to_retry_none_to_retry():

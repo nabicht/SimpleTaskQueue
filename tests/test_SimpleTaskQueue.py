@@ -1,5 +1,5 @@
-from simple_task_queue import SimpleTaskQueue
-from simple_task_queue import Task
+from simple_task_server import SimpleTaskQueue
+from simple_task_server import Task
 from datetime import datetime
 import pytest
 

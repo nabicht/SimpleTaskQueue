@@ -1,9 +1,10 @@
 
-from simple_task_queue import SimpleTaskQueue
-from simple_task_queue import Task
-from simple_task_queue import TaskManager
+from simple_task_server import SimpleTaskQueue
+from simple_task_server import Task
+from simple_task_server import TaskManager
 from datetime import datetime
 import pytest
+import logging
 
 @pytest.fixture
 def basic_task_manager():
@@ -320,7 +321,6 @@ def test_find_task_in_todo(basic_task_manager):
     t = basic_task_manager._find_task(1, todo=True, in_process=True, done=True)
     assert t is not None
     assert t.task_id() == 1
-
 
 
 # def test_find_in_inprocess(basic_task_manager):
