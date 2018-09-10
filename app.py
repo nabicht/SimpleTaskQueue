@@ -85,8 +85,11 @@ class TaskManagement(Resource):
 
     def delete(self):
         args = task_delete_parser.parse_args()
-        task_manager.delete_task(args.task_id)
-
+        deleted = task_manager.delete_task(args.task_id)
+        if deleted:
+            return {"status": "task deleted", "task_id": args.task_id}, 200
+        else:
+            return {"message": "task not found, cannot delete"}, 400
 
 
 class AttemptManagement(Resource):
