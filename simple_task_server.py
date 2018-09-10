@@ -471,7 +471,7 @@ class TaskManager(object):
             task.get_attempt(attempt_id).mark_failed(fail_reason)
             self._logger.info("TaskManager.fail_attempt: failed Attempt %s for Task %s." % (str(attempt_id), str(task_id)))
             # if attempts is > max attempts and the attempt that failed is the most recent one then move it to done
-            if task.num_attempts() >= task.max_attempts and task.most_recent_attempt().id == attempt_id:
+            if task.num_attempts() >= task.max_attempts and task.most_recent_attempt().id() == attempt_id:
                 self._move_task_to_done(task)
                 self._logger.info("TaskManager.fail_attempt: Task %s Attempt %s is last attempt failed. Moved to done" %
                                   (str(task_id), str(attempt_id)))
