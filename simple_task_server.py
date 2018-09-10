@@ -482,7 +482,7 @@ class TaskManager(object):
         task = self._find_task(task_id, in_process=True, done=True)
         if task is not None:
             task.get_attempt(attempt_id).mark_completed(time_stamp)
-            self._logger.debug("TaskManager.complete_attempt: completed Attempt %s for Task %s." % (str(attempt_id), str(task_id)))
+            self._logger.info("TaskManager.complete_attempt: completed Attempt %s for Task %s." % (str(attempt_id), str(task_id)))
             if self._find_task(task_id, in_process=True):
                 self._move_task_to_done(task)
                 return True
