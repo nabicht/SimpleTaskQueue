@@ -1,7 +1,7 @@
 from flask import Flask
 from flask import render_template
-from simple_task_queue import TaskManager
-from simple_task_queue import Task
+from simple_task_server import TaskManager
+from simple_task_server import Task
 from flask_restful import Resource, Api
 from flask_restful import reqparse
 from datetime import datetime
