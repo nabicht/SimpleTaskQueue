@@ -1,6 +1,10 @@
 from simple_task_server import Task
 from simple_task_server import OpenTasks
 from datetime import datetime
+import logging
+
+LOGGER = logging.getLogger(__name__)
+
 
 def test_task_to_retry_none_to_retry():
     time_stamp = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=5, microsecond=100222)
@@ -15,7 +19,7 @@ def test_task_to_retry_none_to_retry():
     start_time_stamp = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=6, microsecond=100222)
     t2.attempt_task("runner", start_time_stamp)
 
-    ot = OpenTasks()
+    ot = OpenTasks(LOGGER)
     ot.add_task(t1)
     ot.add_task(t2)
     current_time = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=8, microsecond=100222)
@@ -38,7 +42,7 @@ def test_task_to_retry_first_started_retry():
     start_time_stamp = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=6, microsecond=100222)
     t2.attempt_task("runner", start_time_stamp)
 
-    ot = OpenTasks()
+    ot = OpenTasks(LOGGER)
     ot.add_task(t1)
     ot.add_task(t2)
     current_time = datetime(year=2018, month=8, day=13, hour=5, minute=12, second=8, microsecond=100222)
@@ -62,7 +66,7 @@ def test_task_to_retry_second_started_retry():
     start_time_stamp = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=8, microsecond=100222)
     t2.attempt_task("runner", start_time_stamp)
 
-    ot = OpenTasks()
+    ot = OpenTasks(LOGGER)
     ot.add_task(t1)
     ot.add_task(t2)
     current_time = datetime(year=2018, month=8, day=13, hour=5, minute=12, second=8, microsecond=100222)

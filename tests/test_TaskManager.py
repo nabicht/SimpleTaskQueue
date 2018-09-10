@@ -6,24 +6,27 @@ from datetime import datetime
 import pytest
 import logging
 
+LOGGER = logging.getLogger(__name__)
+
+
 @pytest.fixture
 def basic_task_manager():
     time_stamp = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=5, microsecond=100222)
-    tq = SimpleTaskQueue()
+    tq = SimpleTaskQueue(LOGGER)
     t1 = Task(1, "run command example", time_stamp, name="example run", desc="this is a bologna command that does nothing")
     tq.add_task(t1)
     t2 = Task(2, "python -m some_script", time_stamp, name="example python run that will only try to run once and should last 3 minutes")
     tq.add_task(t2)
     t3 = Task(3, "cd my_directory; python -m some_script", time_stamp, name="multiple commands", desc="an example of multiple commands in  one task")
     tq.add_task(t3)
-    tm = TaskManager(None)
+    tm = TaskManager(LOGGER)
     tm._todo_queue = tq
     return tm
 
 
 def test_new_task_manager():
     # should be empty
-    tm = TaskManager(None)
+    tm = TaskManager(LOGGER)
     assert len(tm._todo_queue) == 0
     assert len(tm._in_process) == 0
     assert len(tm._done) == 0
@@ -34,7 +37,7 @@ def test_new_task_manager():
 
 
 def test_add_task():
-    tm = TaskManager(None)
+    tm = TaskManager(LOGGER)
     t1 = Task(1, "run command example", datetime.now(), name="example run", desc="this is a bologna command that does nothing")
     tm.add_task(t1)
     assert len(tm._todo_queue) == 1
@@ -49,7 +52,7 @@ def test_add_task():
 
 
 def test_add_same_task_id_more_than_once():
-    tm = TaskManager(None)
+    tm = TaskManager(LOGGER)
     t1 = Task(1, "run command example", datetime.now(), name="example run", desc="this is a bologna command that does nothing")
     tm.add_task(t1)
     assert len(tm._todo_queue) == 1
@@ -64,7 +67,7 @@ def test_add_same_task_id_more_than_once():
 
 
 def test_add_same_task_more_than_once():
-    tm = TaskManager(None)
+    tm = TaskManager(LOGGER)
     t1 = Task(1, "run command example", datetime.now(), name="example run", desc="this is a bologna command that does nothing")
     tm.add_task(t1)
     assert len(tm._todo_queue) == 1
@@ -197,6 +200,7 @@ def test_mark_completed_when_multiple_attemtps_in_process(basic_task_manager):
     assert not task2.failed()
     assert task2.open_time() is None
 
+
 def test_mark_completed_when_multiple_attempts_in_process_other_order(basic_task_manager):
     # make sure baseline is what we expect
     assert len(basic_task_manager._todo_queue) == 3
@@ -238,7 +242,7 @@ def test_mark_completed_when_done():
     time_stamp1 = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=5, microsecond=100222)
     time_stamp2 = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=10, microsecond=0)
     time_stamp3 = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=15, microsecond=222222)
-    tq = SimpleTaskQueue()
+    tq = SimpleTaskQueue(LOGGER)
     t1 = Task(1, "run command example", time_stamp1, name="example run",
               desc="this is a bologna command that does nothing",
               duration=100, max_attempts=5)
@@ -250,7 +254,7 @@ def test_mark_completed_when_done():
     t3 = Task(3, "cd my_directory; python -m some_script", time_stamp3, name="multiple commands",
               desc="an example of multiple commands in  one task", duration=200)
     tq.add_task(t3)
-    basic_task_manager = TaskManager(None)
+    basic_task_manager = TaskManager(LOGGER)
     basic_task_manager._todo_queue = tq
 
     # make sure baseline is what we expect
@@ -305,12 +309,12 @@ def test_mark_completed_when_done():
 
 def test_mark_completed_when_attempt_unknown():
     time_stamp1 = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=5, microsecond=100222)
-    tq = SimpleTaskQueue()
+    tq = SimpleTaskQueue(LOGGER)
     t1 = Task(1, "run command example", time_stamp1, name="example run",
               desc="this is a bologna command that does nothing",
               duration=100, max_attempts=2)
     tq.add_task(t1)
-    tm = TaskManager(None)
+    tm = TaskManager(LOGGER)
     tm._todo_queue = tq
 
     completed_time_stamp = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=44, microsecond=100222)
@@ -324,3 +328,21 @@ def test_find_task_in_todo(basic_task_manager):
 
 
 # def test_find_in_inprocess(basic_task_manager):
+
+
+def test_delete_from_todo(basic_task_manager):
+    # make sure baseline is what we expect
+    assert len(basic_task_manager._todo_queue) == 3
+    assert len(basic_task_manager._in_process) == 0
+    assert len(basic_task_manager._done) == 0
+    assert basic_task_manager._find_task(1, todo=True) is not None
+
+    basic_task_manager.delete_task(1)
+
+    # now the task should be gone
+    assert len(basic_task_manager._todo_queue) == 2
+    assert len(basic_task_manager._in_process) == 0
+    assert len(basic_task_manager._done) == 0
+    assert basic_task_manager._find_task(1) is None
+
+
