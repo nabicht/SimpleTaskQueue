@@ -500,17 +500,22 @@ class TaskManager(object):
         self._logger.info("TaskManager.add_task: Added Task %s to todo." % str(task.task_id()))
 
     def delete_task(self, task_id):
+        deleted = False
         if self._find_task(task_id, todo=True) is not None:
             self._todo_queue.remove_task(task_id)
             self._logger.info("TaskManager.delete_task: Task %s deleted from todo" % str(task_id))
+            deleted = True
         elif self._find_task(task_id, done=True) is not None:
             del self._done[task_id]
             self._logger.info("TaskManager.delete_task: Task %s deleted from done" % str(task_id))
+            deleted = True
         elif self._find_task(task_id, in_process=True) is not None:
             self._in_process.remove_task(task_id)
             self._logger.info("TaskManager.delete_task: Task %s deleted from inprocess" % str(task_id))
+            deleted = True
         else:
             self._logger.info("TaskManager.delete_task: Task %s not found so not deleted." % str(task_id))
+        return deleted
 
     def done_tasks(self):
         return self._done.values()
