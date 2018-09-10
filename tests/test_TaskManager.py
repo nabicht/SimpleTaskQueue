@@ -343,6 +343,96 @@ def test_delete_from_todo(basic_task_manager):
     assert len(basic_task_manager._todo_queue) == 2
     assert len(basic_task_manager._in_process) == 0
     assert len(basic_task_manager._done) == 0
-    assert basic_task_manager._find_task(1) is None
+    assert basic_task_manager._find_task(1, todo=True) is None
 
 
+def test_delete_from_inprocess(basic_task_manager):
+    # make sure baseline is what we expect
+    assert len(basic_task_manager._todo_queue) == 3
+    assert len(basic_task_manager._in_process) == 0
+    assert len(basic_task_manager._done) == 0
+    assert basic_task_manager._find_task(1, todo=True) is not None
+
+    # move task to in_process
+    basic_task_manager.start_next_attempt("runner", datetime.now())
+    assert len(basic_task_manager._todo_queue) == 2
+    assert len(basic_task_manager._in_process) == 1
+    assert len(basic_task_manager._done) == 0
+    assert basic_task_manager._find_task(1, todo=True) is None
+    assert basic_task_manager._find_task(1, in_process=True) is not None
+
+    basic_task_manager.delete_task(1)
+
+    # now the task should be gone
+    assert len(basic_task_manager._todo_queue) == 2
+    assert len(basic_task_manager._in_process) == 0
+    assert len(basic_task_manager._done) == 0
+    assert basic_task_manager._find_task(1, in_process=True) is None
+
+
+def test_delete_from_done_when_completed(basic_task_manager):
+    # make sure baseline is what we expect
+    assert len(basic_task_manager._todo_queue) == 3
+    assert len(basic_task_manager._in_process) == 0
+    assert len(basic_task_manager._done) == 0
+    assert basic_task_manager._find_task(1, todo=True) is not None
+
+    # move task to in_process
+    task, attempt = basic_task_manager.start_next_attempt("runner", datetime.now())
+    assert task.task_id() == 1
+    assert len(basic_task_manager._todo_queue) == 2
+    assert len(basic_task_manager._in_process) == 1
+    assert len(basic_task_manager._done) == 0
+    assert basic_task_manager._find_task(1, todo=True) is None
+    assert basic_task_manager._find_task(1, in_process=True) is not None
+
+    # now complete
+    basic_task_manager.complete_attempt(task.task_id(), attempt.id(), datetime.now())
+    assert len(basic_task_manager._todo_queue) == 2
+    assert len(basic_task_manager._in_process) == 0
+    assert len(basic_task_manager._done) == 1
+    assert basic_task_manager._find_task(1, todo=True) is None
+    assert basic_task_manager._find_task(1, in_process=True) is None
+    assert basic_task_manager._find_task(1, done=True) is not None
+
+    basic_task_manager.delete_task(1)
+
+    # now the task should be gone
+    assert len(basic_task_manager._todo_queue) == 2
+    assert len(basic_task_manager._in_process) == 0
+    assert len(basic_task_manager._done) == 0
+    assert basic_task_manager._find_task(1, done=True) is None
+
+
+def test_delete_from_done_when_failed(basic_task_manager):
+    # make sure baseline is what we expect
+    assert len(basic_task_manager._todo_queue) == 3
+    assert len(basic_task_manager._in_process) == 0
+    assert len(basic_task_manager._done) == 0
+    assert basic_task_manager._find_task(1, todo=True) is not None
+
+    # move task to in_process
+    task, attempt = basic_task_manager.start_next_attempt("runner", datetime.now())
+    assert task.task_id() == 1
+    assert len(basic_task_manager._todo_queue) == 2
+    assert len(basic_task_manager._in_process) == 1
+    assert len(basic_task_manager._done) == 0
+    assert basic_task_manager._find_task(1, todo=True) is None
+    assert basic_task_manager._find_task(1, in_process=True) is not None
+
+    # now fail
+    basic_task_manager.fail_attempt(task.task_id(), attempt.id(), datetime.now())
+    assert len(basic_task_manager._todo_queue) == 2
+    assert len(basic_task_manager._in_process) == 0
+    assert len(basic_task_manager._done) == 1
+    assert basic_task_manager._find_task(1, todo=True) is None
+    assert basic_task_manager._find_task(1, in_process=True) is None
+    assert basic_task_manager._find_task(1, done=True) is not None
+
+    basic_task_manager.delete_task(1)
+
+    # now the task should be gone
+    assert len(basic_task_manager._todo_queue) == 2
+    assert len(basic_task_manager._in_process) == 0
+    assert len(basic_task_manager._done) == 0
+    assert basic_task_manager._find_task(1, done=True) is None
