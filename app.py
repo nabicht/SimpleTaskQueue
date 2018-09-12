@@ -163,7 +163,7 @@ class MonitorTasks(Resource):
                      "name": task.name,
                      "description": task.desc,
                      "command": task.cmd,
-                     "dependent on": self._dependent_on_str(task.dependent_on),
+                     "dependent_on": self._dependent_on_str(task.dependent_on),
                      "duration": task.duration,
                      "attempted": task.num_attempts(),
                      "attempts_left": task.max_attempts - task.num_attempts(),
