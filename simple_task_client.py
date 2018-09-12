@@ -71,7 +71,7 @@ def main(server, risky=False):
                     subprocess.check_call(shlex.split(cmd))
                 report_completed_attempt(server, runner_id, attempt_info['task_id'], attempt_info['attempt_id'])
             except Exception as e:
-                report_failed_attempt(server, runner_id, attempt_info['task_id'], attempt_info['attempt_id'], message=e.message)
+                report_failed_attempt(server, runner_id, attempt_info['task_id'], attempt_info['attempt_id'], message=str(e))
         else:
             time.sleep(wait_seconds)
 
