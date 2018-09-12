@@ -156,7 +156,7 @@ class MonitorTasks(Resource):
                 d = {"id": task.task_id(),
                      "status": "In Process",
                      "created": str(task.created_time),
-                     "started": str(task.start_time()),
+                     "started": str(task.started_time()),
                      "name": task.name,
                      "description": task.desc,
                      "command": task.cmd,

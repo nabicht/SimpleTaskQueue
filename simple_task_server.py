@@ -108,7 +108,7 @@ class Task(object):
         # TODO unit test
         start_time = None
         if len(self._attempts) > 0:
-            start_time = self._attempts[0].start_time
+            start_time = self._attempts.iteritems().next()[1].start_time
         return start_time
 
     def finished_time(self):
