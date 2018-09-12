@@ -11,6 +11,9 @@ import util
 import logging
 
 
+TIME_FORMAT = "%Y-%m-%d %H:%M:%S"
+
+
 class TaskIDCreator:
 
     def __init__(self):
@@ -138,13 +141,13 @@ class MonitorTasks(Resource):
             for task in to_do:
                 d = {"id": task.task_id(),
                      "status": "To Do",
-                     "created": str(task.created_time),
+                     "created": task.created_time.strftime(TIME_FORMAT),
                      "name": task.name,
                      "description": task.desc,
                      "command": task.cmd,
-                     "dependent on": self._dependent_on_str(task.dependent_on),
+                     "dependent_on": self._dependent_on_str(task.dependent_on),
                      "duration": task.duration,
-                     "max attempts": task.max_attempts,
+                     "max_attempts": task.max_attempts,
                      }
                 list_of_tasks.append(d)
         elif list_type.lower() == "inprocess":
@@ -156,16 +159,16 @@ class MonitorTasks(Resource):
                 d = {"id": task.task_id(),
                      "status": "In Process",
                      "created": str(task.created_time),
-                     "started": str(task.started_time()),
+                     "started": task.started_time().strftime(TIME_FORMAT),
                      "name": task.name,
                      "description": task.desc,
                      "command": task.cmd,
                      "dependent on": self._dependent_on_str(task.dependent_on),
                      "duration": task.duration,
                      "attempted": task.num_attempts(),
-                     "attempts left": task.max_attempts - task.num_attempts(),
-                     "attempt open": task.most_recent_attempt().in_process() is True,
-                     "current runner": current_runner
+                     "attempts_left": task.max_attempts - task.num_attempts(),
+                     "attempt_open": task.most_recent_attempt().in_process() is True,
+                     "current_runner": current_runner
                      }
                 list_of_tasks.append(d)
         elif list_type.lower() == "failed":
@@ -174,8 +177,8 @@ class MonitorTasks(Resource):
                 if task.failed():
                     d = {"id": task.task_id(),
                          "status": "Failed",
-                         "created": str(task.created_time),
-                         "finished": str(task.finished_time()),
+                         "created": task.created_time.strftime(TIME_FORMAT),
+                         "finished": task.finished_time().stftime(TIME_FORMAT),
                          "name": task.name,
                          "description": task.desc,
                          "command": task.cmd,
@@ -189,8 +192,8 @@ class MonitorTasks(Resource):
                 if task.is_completed():
                     d = {"id": task.task_id(),
                          "status": "Completed",
-                         "created": str(task.created_time),
-                         "finished": str(task.finished_time()),
+                         "created": task.created_time.strftime(TIME_FORMAT),
+                         "finished": task.finished_time().strftime(TIME_FORMAT),
                          "name": task.name,
                          "description": task.desc,
                          "command": task.cmd,
