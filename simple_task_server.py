@@ -108,6 +108,7 @@ class Task(object):
         # TODO unit test
         start_time = None
         if len(self._attempts) > 0:
+            # this is a hacky way to get fast access to the value of the first item in the dictionary
             start_time = self._attempts.iteritems().next()[1].start_time
         return start_time
 
