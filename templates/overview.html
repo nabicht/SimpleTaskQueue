@@ -1,11 +1,12 @@
 {% extends "bootstrap/base.html" %}
-{% block title %}This is an example page{% endblock %}
+{% block title %}SimpleTaskQueue Monitoring{% endblock %}
 
 {%  block head %}
     {{ super() }}
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.1.1/css/bootstrap.css" rel="stylesheet">
     <link href="https://cdn.datatables.net/1.10.19/css/dataTables.bootstrap4.min.css" rel="stylesheet">
-    <link href="https://cdn.datatables.net/fixedheader/3.1.5/css/fixedHeader.bootstrap4.min.css" rel="stylesheet">
     <link href="https://cdn.datatables.net/responsive/2.2.3/css/responsive.bootstrap4.min.css" rel="stylesheet">
+    <link href="/static/stq_custom.css" rel="stylesheet">
 {% endblock %}
 
 {% block navbar %}
@@ -18,21 +19,21 @@
     <div class="w-100 p-3">
         <h1>Simple Task Queue</h1>
         <h2>To Do</h2>
-        <table id="todoTaskTable" class="display compact table-striped table-bordered" style="width:100%" >
+        <table id="todoTaskTable" class="table-small table-striped table-bordered dt-responsive nowrap" style="width:100%" >
             <thead>
                 <tr>
                     <th>Created Time</th>
-                    <th>Name</th>
-                    <th>Description</th>
                     <th>Command</th>
-                    <th>Dependent On</th>
                     <th>Duration</th>
+                    <th>Dependent On</th>
                     <th>Max Attempts</th>
+                    <th>Name</th>
+                    <th>Description</td>
                 </tr>
             </thead>
         </table>
         <h2>In Process</h2>
-        <table id="inprocessTaskTable" class="display compact table-striped table-bordered" style="width:100%" >
+        <table id="inprocessTaskTable" class="table-small table-striped table-bordered" style="width:100%" >
             <thead>
                 <tr>
                     <th>Created Time</th>
@@ -50,7 +51,7 @@
             </thead>
         </table>
         <h2>Failed</h2>
-        <table id="failedTaskTable" class="display compact table-striped table-bordered" style="width:100%" >
+        <table id="failedTaskTable" class="table-small table-striped table-bordered" style="width:100%" >
             <thead>
                 <tr>
                     <th>Created Time</th>
@@ -64,7 +65,7 @@
             </thead>
         </table>
         <h2>Completed</h2>
-        <table id="completedTaskTable" class="display compact table-striped table-bordered" style="width:100%" >
+        <table id="completedTaskTable" class="table-small table-striped table-bordered" style="width:100%" >
             <thead>
                 <tr>
                     <th>Created Time</th>
@@ -85,6 +86,8 @@
     <script src="//code.jquery.com/jquery-3.3.1.js"></script>
     <script src="//cdn.datatables.net/1.10.19/js/jquery.dataTables.min.js"></script>
     <script src="//cdn.datatables.net/1.10.19/js/dataTables.bootstrap4.min.js"></script>
+    <script src="//cdn.datatables.net/responsive/2.2.3/js/dataTables.responsive.min.js"></script>
+    <script src="//cdn.datatables.net/responsive/2.2.3/js/responsive.bootstrap4.min.js"></script>
     <script>
     $(document).ready(function() {
         $('#todoTaskTable').DataTable( {
@@ -93,12 +96,12 @@
             // add column definitions to map your json to the table
             "columns": [
                 {data: "created"},
-                {data: "name"},
-                {data: "description"},
                 {data: "command"},
-                {data: "dependent_on"},
                 {data: "duration"},
-                {data: "max_attempts"}
+                {data: "dependent_on"},
+                {data: "max_attempts"},
+                {data: "name"},
+                {data: "description"}
             ]
         } );
     });
