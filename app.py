@@ -186,7 +186,7 @@ class MonitorTasks(Resource):
         elif list_type.lower() == "completed":
             done = task_manager.done_tasks()
             for task in done:
-                if task.failed():
+                if task.is_completed():
                     d = {"id": task.task_id(),
                          "status": "Completed",
                          "created": str(task.created_time),
