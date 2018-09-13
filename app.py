@@ -164,7 +164,7 @@ class MonitorTasks(Resource):
         return ", ".join([str(dependent_on) for dependent_on in dependent_ons])
 
     @staticmethod
-    def _dependencies_str(self, dependencies):
+    def _dependencies_str(dependencies):
         return ", ".join([str(dependency) for dependency in dependencies])
 
     def get(self, list_type):
