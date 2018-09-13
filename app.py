@@ -134,6 +134,9 @@ class MonitorTasks(Resource):
     def _dependent_on_str(dependent_ons):
         return ", ".join([str(dependent_on) for dependent_on in dependent_ons])
 
+    def _dependencies_str(self, dependencies):
+        return ", ".join([str(dependency) for dependency in dependencies])
+
     def get(self, list_type):
         list_of_tasks = []
         if list_type.lower() == "todo":
@@ -182,7 +185,7 @@ class MonitorTasks(Resource):
                          "name": task.name,
                          "description": task.desc,
                          "command": task.cmd,
-                         "dependencies": task_manager.dependencies(task.task_id()),
+                         "dependencies": self._dependent_on_str(task_manager.dependencies(task.task_id())),
                          "attempts": task.num_attempts()
                          }
                     list_of_tasks.append(d)
@@ -197,7 +200,7 @@ class MonitorTasks(Resource):
                          "name": task.name,
                          "description": task.desc,
                          "command": task.cmd,
-                         "dependencies": task_manager.dependencies(task.task_id()),
+                         "dependencies": self._dependent_on_str(task_manager.dependencies(task.task_id())),
                          "attempts": task.num_attempts()
                          }
                     list_of_tasks.append(d)
