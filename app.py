@@ -73,8 +73,12 @@ attempt_update.add_argument('message', dest='message', required=False, help='Sta
 # a wrapper that creates a Resource to interact with TaskManager and does some JSON/restful specific stuff
 class TaskManagement(Resource):
 
+    def __init__(self, **kwargs):
+        self._logger = kwargs.get("logger")
+
     def post(self):
         args = task_post_parser.parse_args()
+        self._logger.info("TaskManagement.post: %s" % str(args))
         task = Task(task_id_creator.id(),
                     args.command,
                     datetime.now(),
@@ -88,6 +92,7 @@ class TaskManagement(Resource):
 
     def delete(self):
         args = task_delete_parser.parse_args()
+        self._logger.info("TaskManagement.delete: %s" % str(args))
         deleted = task_manager.delete_task(args.task_id)
         if deleted:
             return {"status": "task deleted", "task_id": args.task_id}, 200
@@ -99,6 +104,9 @@ class AttemptManagement(Resource):
 
     NO_TASK = {'status': "no task"}
 
+    def __init__(self, **kwargs):
+        self._logger = kwargs.get("logger")
+
     @staticmethod
     def _task_attempt_json(task, attempt):
         return {'status': "task",
@@ -108,6 +116,7 @@ class AttemptManagement(Resource):
 
     def get(self):
         args = get_next_attempt.parse_args()
+        self._logger.info("AttemptManagement.get: %s" % str(args))
         current_time = datetime.now()
         task, attempt = task_manager.start_next_attempt(args.runner_id, current_time)
         if task is not None:
@@ -117,6 +126,7 @@ class AttemptManagement(Resource):
 
     def put(self):
         args = attempt_update.parse_args()
+        self._logger.info("AttemptManagement.put: %s" % str(args))
         status = args.status.lower()
         if status == "failed":
             task_manager.fail_attempt(args.task_id, args.attempt_id, "client reported")
@@ -130,14 +140,19 @@ class AttemptManagement(Resource):
 
 class MonitorTasks(Resource):
 
+    def __init__(self, **kwargs):
+        self._logger = kwargs.get("logger")
+
     @staticmethod
     def _dependent_on_str(dependent_ons):
         return ", ".join([str(dependent_on) for dependent_on in dependent_ons])
 
+    @staticmethod
     def _dependencies_str(self, dependencies):
         return ", ".join([str(dependency) for dependency in dependencies])
 
     def get(self, list_type):
+        self._logger.info("MonitorTasks.get: %s" % list_type)
         list_of_tasks = []
         if list_type.lower() == "todo":
             to_do = task_manager.todo_tasks()
@@ -209,9 +224,9 @@ class MonitorTasks(Resource):
         return {"data": list_of_tasks}, 200
 
 
-api.add_resource(TaskManagement, '/task')
-api.add_resource(AttemptManagement, '/attempt')
-api.add_resource(MonitorTasks, '/listtasks/<list_type>')
+api.add_resource(TaskManagement, '/task', resource_class_kwargs={'logger': logger})
+api.add_resource(AttemptManagement, '/attempt', resource_class_kwargs={'logger': logger})
+api.add_resource(MonitorTasks, '/listtasks/<list_type>', resource_class_kwargs={'logger': logger})
 
 
 @app.route('/')
