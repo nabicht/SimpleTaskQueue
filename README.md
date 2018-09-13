@@ -1,9 +1,11 @@
+_Note to all people wanting to use this project -- it's close. v0.1.0 is scheduled for 2018-09-15 and I'm fairly certain I'm going to hit that self-imposed deadline. You will know it is ready for prime time when there is more documentation than this simple README.md_
+
 # SimpleTaskQueue
 A simple task queue used for coordinating distributed, parallel work.
 
-Go from need to processing quickly.
+It might be smart and complex on the backend but it is simple for you. The goal is to allow you to o from need to processing quickly.
 
-_Note to all people wanting to use this project -- it's close. v0.1.0 is scheduled for 2018-09-15 and I'm fairly certain I'm going to hit that self-imposed deadline. You will know it is ready for prime time when there is more documentation than this simple README.md_
+Distributing tasks and automating processing shouldn't be an excercise in extreme infrastrucutre management. STQ doesn't require database configuration, messaging queues, multiple process coordination, and on and on. Download. Launch a server. Add some tasks. Launch a runner. Then launch some more runners.
 
 ## RESTful communication
 Process a series of tasks with multiple runners without having to worry about installing messaging queues, databases, message protocols, etc. 
