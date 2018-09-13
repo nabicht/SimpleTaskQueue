@@ -33,48 +33,48 @@
             </thead>
         </table>
         <h2>In Process</h2>
-        <table id="inprocessTaskTable" class="table-small table-striped table-bordered" style="width:100%" >
+        <table id="inprocessTaskTable" class="table-small table-striped table-bordered dt-responsive nowrap" style="width:100%" >
             <thead>
                 <tr>
                     <th>Created Time</th>
                     <th>Started Time</th>
-                    <th>Name</th>
-                    <th>Description</th>
                     <th>Command</th>
-                    <th>Dependent On</th>
                     <th>Duration</th>
+                    <th>Dependent On</th>
                     <th>Attempted</th>
                     <th>Attempts Left</th>
                     <th>Attempt Open</th>
+                    <th>Name</th>
+                    <th>Description</th>
                     <th>Current Runner</th>
                 </tr>
             </thead>
         </table>
         <h2>Failed</h2>
-        <table id="failedTaskTable" class="table-small table-striped table-bordered" style="width:100%" >
+        <table id="failedTaskTable" class="table-small table-striped table-bordered dt-responsive nowrap" style="width:100%" >
             <thead>
                 <tr>
                     <th>Created Time</th>
                     <th>Finished Time</th>
+                    <th>Command</th>
+                    <th>Attempts</th>
+                    <th>Dependencies</th>
                     <th>Name</th>
                     <th>Description</th>
-                    <th>Command</th>
-                    <th>Dependencies</th>
-                    <th>Attempts</th>
                 </tr>
             </thead>
         </table>
         <h2>Completed</h2>
-        <table id="completedTaskTable" class="table-small table-striped table-bordered" style="width:100%" >
+        <table id="completedTaskTable" class="table-small table-striped table-bordered dt-responsive nowrap" style="width:100%" >
             <thead>
                 <tr>
                     <th>Created Time</th>
                     <th>Finished Time</th>
+                    <th>Command</th>
+                    <th>Attempts</th>
+                    <th>Dependencies</th>
                     <th>Name</th>
                     <th>Description</th>
-                    <th>Command</th>
-                    <th>Dependencies</th>
-                    <th>Attempts</th>
                 </tr>
             </thead>
         </table>
@@ -115,14 +115,14 @@
             "columns": [
                 {data: "created"},
                 {data: "started"},
-                {data: "name"},
-                {data: "description"},
                 {data: "command"},
-                {data: "dependent on"},
                 {data: "duration"},
+                {data: "dependent_on"},
                 {data: "attempted"},
                 {data: "attempts_left"},
                 {data: "attempt_open"},
+                {data: "name"},
+                {data: "description"},
                 {data: "current_runner"}
             ]
         } );
@@ -137,11 +137,11 @@
             "columns": [
                 {data: "created"},
                 {data: "finished"},
+                {data: "command"},
+                {data: "attempts"},
+                {data: "dependencies"},
                 {data: "name"},
                 {data: "description"},
-                {data: "command"},
-                {data: "dependencies"},
-                {data: "attempts"}
             ]
         } );
     });
@@ -155,11 +155,11 @@
             "columns": [
                 {data: "created"},
                 {data: "finished"},
+                {data: "command"},
+                {data: "attempts"},
+                {data: "dependencies"},
                 {data: "name"},
                 {data: "description"},
-                {data: "command"},
-                {data: "dependencies"},
-                {data: "attempts"}
             ]
         } );
     });
