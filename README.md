@@ -3,7 +3,7 @@ _Note to all people wanting to use this project -- it's close. v0.1.0 is schedul
 # SimpleTaskQueue
 SimpleTaskQueue (STQ) simple to deploy and use task queue used for coordinating distributed, parallel work.
 
-It might be smart and complex on the backend but it is simple for you. The goal of STQ: allow you to o from need to processing quickly.
+It might be smart and complex on the backend but it is simple for you. The goal of STQ: allow you to go from need to processing quickly.
 
 Distributing tasks and automating processing shouldn't be an excercise in extreme infrastrucutre management. STQ doesn't require database configuration, messaging queues, multiple process coordination, and on and on. Download. Launch a server. Add some tasks. Launch a runner. Then launch some more runners.
 
