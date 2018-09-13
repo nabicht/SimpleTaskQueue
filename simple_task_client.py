@@ -1,9 +1,9 @@
 
+import argparse
 import requests
 import json
 import shlex
 import subprocess
-import sys
 import time
 from urlparse import urljoin
 import uuid
@@ -16,10 +16,10 @@ def add_task(server, command, name=None, description=None, dependent_on=None, ma
     if description is not None:
         payload["description"]=str(description)
     if dependent_on is not None:
-        l = []
+        dependent_on_list = []
         for d in dependent_on:
-            l.append(str(d))
-        payload["dependent_on"] = l
+            dependent_on_list.append(str(d))
+        payload["dependent_on"] = dependent_on_list
     if max_attempts is not None:
         payload['max_attempts'] = max_attempts
     if duration is not None:
@@ -57,8 +57,7 @@ def get_next_attempt(server, runner_id):
     return json.loads(r.text)
 
 
-def main(server, risky=False):
-    wait_seconds = 5.0
+def main(server, wait_seconds, risky=False):
     runner_id = uuid.uuid1()
     while True:
         attempt_info = get_next_attempt(server, runner_id)
@@ -77,8 +76,13 @@ def main(server, risky=False):
 
 
 if __name__ == "__main__":
-    server_address = sys.argv[1]
-    run_risky = False
-    if len(sys.argv) > 2:
-        run_risky = bool(sys.argv[2])
-    main(server_address, run_risky)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-s', action="store", dest="server_url", required=True,
+                        help="the url of the SimpleTaskServer")
+    parser.add_argument("-risky", action="store_true", dest="risky", required=False,
+                        help="if present will run the client with shell=True, which is pretty damned risky. Not recommended.")
+    parser.add_argument("-wait_time", action="store", dest="wait_time", type=float, nargs='?',
+                        const=5.0, default=5.0, required=False,
+                        help="the number of seconds to wait after no attempts to run before querying server for a new attempt. Defaults to 5.")
+    args = parser.parse_args()
+    main(args.server_url, args.wait_time, risky=args.risky)
