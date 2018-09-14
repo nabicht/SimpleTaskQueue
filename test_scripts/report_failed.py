@@ -28,7 +28,7 @@ task_5_id = add_task(SERVER, "grep blah big_ol.txt >> /mnt/remote_storage/smalle
 
 # first attempt we get is task_1
 attempt_1_dict = get_next_attempt(SERVER, "runner_a")
-assert attempt_1_dict["status"] == "task"
+assert attempt_1_dict["status"] == "attempt"
 assert attempt_1_dict["command"] == "cp some_files to_here/."
 assert attempt_1_dict["task_id"] == task_1_id
 assert "attempt_id" in attempt_1_dict
@@ -38,7 +38,7 @@ report_failed_attempt(SERVER, "runner_a", attempt_1_dict["task_id"], attempt_1_d
 
 # second attempt we get is an attempt to for task 1 again since it has a max attempts of 2 and the first one failed
 attempt_2_dict = get_next_attempt(SERVER, "runner_b")
-assert attempt_2_dict["status"] == "task"
+assert attempt_2_dict["status"] == "attempt"
 assert attempt_2_dict["command"] == "cp some_files to_here/."
 assert attempt_2_dict["task_id"] == task_1_id
 assert "attempt_id" in attempt_2_dict
@@ -48,7 +48,7 @@ report_failed_attempt(SERVER, "runner_a", attempt_2_dict["task_id"], attempt_2_d
 
 # third attempt we get is task_2 because we've reached max attempts failed on task 1
 attempt_3_dict = get_next_attempt(SERVER, "runner_c")
-assert attempt_3_dict["status"] == "task"
+assert attempt_3_dict["status"] == "attempt"
 assert attempt_3_dict["command"] == "cp some_files to_here/."
 assert attempt_3_dict["task_id"] == task_2_id
 assert "attempt_id" in attempt_3_dict
@@ -58,7 +58,7 @@ report_failed_attempt(SERVER, "runner_c", attempt_3_dict["task_id"], attempt_3_d
 
 # fourth attempt we get is task_3
 attempt_4_dict = get_next_attempt(SERVER, "runner_d")
-assert attempt_4_dict["status"] == "task"
+assert attempt_4_dict["status"] == "attempt"
 assert attempt_4_dict["command"] == "python run_some_stuff.py"
 assert attempt_4_dict["task_id"] == task_3_id
 assert "attempt_id" in attempt_4_dict
@@ -69,7 +69,7 @@ report_failed_attempt(SERVER, "runner_d", attempt_4_dict["task_id"], attempt_4_d
 # get the 5th attempt
 # should skip task_4 because it is dependent on 1 and 3 and those both failed
 attempt_5_dict = get_next_attempt(SERVER, "runner_d")
-assert attempt_5_dict["status"] == "task"
+assert attempt_5_dict["status"] == "attempt"
 assert attempt_5_dict["command"] == "grep blah big_ol.txt >> /mnt/remote_storage/smaller.txt"
 assert attempt_5_dict["task_id"] == task_5_id
 assert "attempt_id" in attempt_5_dict
@@ -79,6 +79,6 @@ report_failed_attempt(SERVER, "runner_d", attempt_5_dict["task_id"], attempt_5_d
 
 # sixth attempt should have no attempts because 4 is still waiting on 1 and 3, and there are no other tasks
 attempt_6_dict = get_next_attempt(SERVER, "runner_e")
-assert attempt_6_dict["status"] == "no task"
+assert attempt_6_dict["status"] == "no attempt"
 
 

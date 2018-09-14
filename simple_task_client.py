@@ -107,7 +107,7 @@ def main(server, wait_seconds, runner_id, risky=False):
     print runner_id
     while True:
         attempt_info = get_next_attempt(server, runner_id)
-        if attempt_info["status"] == "task":
+        if attempt_info["status"] == "attempt":
             cmd = attempt_info['command']
             try:
                 if risky:

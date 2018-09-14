@@ -119,14 +119,14 @@ class TaskManagement(Resource):
 
 class AttemptManagement(Resource):
 
-    NO_TASK = {'status': "no task"}
+    NO_TASK = {'status': "no attempt"}
 
     def __init__(self, **kwargs):
         self._logger = kwargs.get("logger")
 
     @staticmethod
     def _task_attempt_json(task, attempt):
-        return {'status': "task",
+        return {'status': "attempt",
                 'task_id': task.task_id(),
                 'command': task.cmd,
                 'attempt_id': attempt.id()}
@@ -258,6 +258,7 @@ if __name__ == '__main__':
     parser.add_argument("-port", action="store", dest="port", type=int, nargs=1,
                         default=5000, required=False,
                         help="The port. Defaults to 5000")
-    args = parser.parse_args()
-    app.run(host=args.host[0], port=args.port[0])
+    cmd_args = parser.parse_args()
+    app.run(host=cmd_args.host[0], port=cmd_args.port[0])
+
 
