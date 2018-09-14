@@ -138,7 +138,7 @@ class AttemptManagement(Resource):
         task, attempt = task_manager.start_next_attempt(args.runner_id, current_time)
         if task is not None:
             json_dict = self._task_attempt_json(task, attempt)
-            self._logger.info("AttemptManagement.get next attempt: $s" % str(json_dict))
+            self._logger.info("AttemptManagement.get next attempt: %s" % str(json_dict))
             return json_dict, 200
         else:
             json_dict = self.NO_TASK
