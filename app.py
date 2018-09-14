@@ -173,7 +173,7 @@ class MonitorTasks(Resource):
         if list_type.lower() == "todo":
             to_do = task_manager.todo_tasks()
             for task in to_do:
-                d = {"id": task.task_id(),
+                d = {"task_id": task.task_id(),
                      "status": "To Do",
                      "created": task.created_time.strftime(TIME_FORMAT),
                      "name": task.name,
@@ -190,7 +190,7 @@ class MonitorTasks(Resource):
                 current_runner = ""
                 if task.most_recent_attempt().in_process():
                     current_runner = task.most_recent_attempt().runner
-                d = {"id": task.task_id(),
+                d = {"task_id": task.task_id(),
                      "status": "In Process",
                      "created": str(task.created_time),
                      "started": task.started_time().strftime(TIME_FORMAT),
@@ -209,7 +209,7 @@ class MonitorTasks(Resource):
             done = task_manager.done_tasks()
             for task in done:
                 if task.failed():
-                    d = {"id": task.task_id(),
+                    d = {"task_id": task.task_id(),
                          "status": "Failed",
                          "created": task.created_time.strftime(TIME_FORMAT),
                          "finished": task.finished_time().stftime(TIME_FORMAT),
@@ -224,7 +224,7 @@ class MonitorTasks(Resource):
             done = task_manager.done_tasks()
             for task in done:
                 if task.is_completed():
-                    d = {"id": task.task_id(),
+                    d = {"task_id": task.task_id(),
                          "status": "Completed",
                          "created": task.created_time.strftime(TIME_FORMAT),
                          "finished": task.finished_time().strftime(TIME_FORMAT),
