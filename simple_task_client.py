@@ -44,6 +44,11 @@ def add_task(server, command, name=None, description=None, dependent_on=None, ma
     return str(response_dict['task_id'])
 
 
+def delete_task(server, task_id):
+    r = requests.delete(urljoin(server, "task"), data={'task_id': task_id})
+    return json.loads(r.text)
+
+
 def report_failed_attempt(server, runner_id, task_id, attempt_id, message=None):
     payload = {'runner_id': runner_id,
                'task_id': task_id,
@@ -70,6 +75,32 @@ def get_next_attempt(server, runner_id):
     payload = {'runner_id': runner_id}
     r = requests.get(urljoin(server, 'attempt'), params=payload)
     return json.loads(r.text)
+
+
+def get_tasks(server, task_type):
+    r = requests.get(urljoin(server, 'listtasks/%s' % task_type))
+    d = json.loads(r.text)
+    tasks = {}
+    if d is not None:
+        for task_dict in d.get("data"):
+            tasks[task_dict.get('task_id')] = task_dict
+    return tasks
+
+
+def get_todo_tasks(server):
+    return get_tasks(server, "todo")
+
+
+def get_inprocess_tasks(server):
+    return get_tasks(server, "inprocess")
+
+
+def get_failed_tasks(server):
+    return get_tasks(server, "failed")
+
+
+def get_completed_tasks(server):
+    return get_tasks(server, "completed")
 
 
 def main(server, wait_seconds, runner_id, risky=False):
