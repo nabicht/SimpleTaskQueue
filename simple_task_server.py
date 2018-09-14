@@ -442,7 +442,7 @@ class TaskManager(object):
                               (str(attempt.id()), str(next_task.task_id()), next_task.num_attempts(),
                                next_task.max_attempts))
         else:
-            self._logger.info("TaskManager.start_next_attempt: No next task to attempt. Returning None for nex task and None for attempt.")
+            self._logger.info("TaskManager.start_next_attempt: No next task to attempt. Returning None for next task and None for attempt.")
         return next_task, attempt
 
     def _find_task(self, task_id, todo=False, in_process=False, done=False):
