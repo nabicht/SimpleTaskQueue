@@ -25,6 +25,14 @@ A Runner is an STQ client that peforms the actual work of the Task. It runs one 
 
 STQ comes with a python-based Runner. But since Runners communicate with STQ via a RESTful API, it is easy to write a Runner in whatever language you want.
 
+### Task States
+At any given time, Tasks are in one of four states:
+
+1. **To Do**: The Task is waiting to be attempted.
+2. **In Process**: A Task is underway. This does not mean that a runner is actively working on the task; rather, it is indicative of a state where at least the first Attempt has been started and the Task is not Completed or Failed.
+3. **Completed**: A Task has been completed successfully, but we just say "completed" since success is implied by the fact that it isn't Failed. To be Completed only one of the Task's Attempts needs to have Completed. Once a Task is Completed no other Attempts will be distributed to Runners.
+4. **Failed**: A Task has failed. All Attempts have been run and all of them failed. Once a Task is Failed, no other Attempts will be distributed to Runners.
+
 ### Attempts vs Tasks
 You want your tasks to complete successfully so STQ does too. This is why each task can be attempted more than once (optionally). 
 
@@ -32,5 +40,8 @@ Every Task has one ore more Attempts. The amount of Attempts defaults to one for
 
 A Task is completed as soon as any on Attempt is completed. A Task is not failed until all of its Attempts are failed.
 
-A Task can have an expected duration. This can be set with `duration` upon Task creation. If an Attempt is running for more than the expected duration, STQ aggressively assumes that the running of the Attempt has failed. If there are more Attempts left of the Task, then the next Attempt will be queued up and distributed to a Runner.
+A Task can have an expected duration. This can be set with `duration` upon Task creation. If a Runner is executing an Attempt more than the expected duration, STQ aggressively assumes that the running of the Attempt has failed. If there are more Attempts left of the Task, then the next Attempt will be queued up and distributed to a Runner. This way a Runner error, hung Runner, infrastructure issue, etc. can possibly be overcome and mission critical tasks get another shot at completion.
+
+Note that this does mean mulitple attempts for Task could end up being completed. This is okay and should be acceptable. Better to be completed more than once than not completed at all.
+
 
