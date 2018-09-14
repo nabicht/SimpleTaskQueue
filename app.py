@@ -113,7 +113,7 @@ class TaskManagement(Resource):
         if deleted:
             return {"status": "task deleted", "task_id": args.task_id}, 200
         else:
-            return {"message": "task not found, cannot delete"}, 400
+            return {"message": "task for %s not found, cannot delete" % args.task_id()}, 400
 
 
 class AttemptManagement(Resource):
@@ -212,7 +212,6 @@ class MonitorTasks(Resource):
                     d = {"task_id": task.task_id(),
                          "status": "Failed",
                          "created": task.created_time.strftime(TIME_FORMAT),
-                         "finished": task.finished_time().stftime(TIME_FORMAT),
                          "name": task.name,
                          "description": task.desc,
                          "command": task.cmd,
