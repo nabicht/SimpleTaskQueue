@@ -25,6 +25,7 @@ from flask_bootstrap import Bootstrap
 import uuid
 import util
 import logging
+import argparse
 
 
 TIME_FORMAT = "%Y-%m-%d %H:%M:%S"
@@ -250,5 +251,13 @@ def task_queue_overview():
 
 
 if __name__ == '__main__':
-    app.run()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-host", action="store", dest="host", nargs=1,
+                        default='127.0.0.1', required=False,
+                        help="The host. Defaults to 127.0.0.1")
+    parser.add_argument("-port", action="store", dest="port", type=int, nargs=1,
+                        default=5000, required=False,
+                        help="The port. Defaults to 5000")
+    args = parser.parse_args()
+    app.run(host=args.host[0], port=args.port[0])
 
