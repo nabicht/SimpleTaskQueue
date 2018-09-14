@@ -80,5 +80,3 @@ report_failed_attempt(SERVER, "runner_d", attempt_5_dict["task_id"], attempt_5_d
 # sixth attempt should have no attempts because 4 is still waiting on 1 and 3, and there are no other tasks
 attempt_6_dict = get_next_attempt(SERVER, "runner_e")
 assert attempt_6_dict["status"] == "no attempt"
-
-
