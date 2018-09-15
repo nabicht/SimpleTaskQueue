@@ -1,7 +1,7 @@
 _Note to all people wanting to use this project -- it's close. v0.1.0 is scheduled for 2018-09-15 and I'm fairly certain I'm going to hit that self-imposed deadline. You will know it is ready for prime time when there is more documentation than this simple README.md_
 
 # SimpleTaskQueue
-SimpleTaskQueue (STQ) simple to deploy and use task queue used for coordinating distributed, parallel work.
+SimpleTaskQueue (STQ) is a simple to deploy and use task queue that coordinates distributed, parallel work.
 
 It might be smart and complex on the backend but it is simple for you. The goal of STQ: allow you to go from need to processing quickly.
 
