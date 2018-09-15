@@ -44,4 +44,17 @@ A Task can have an expected duration. This can be set with `duration` upon Task 
 
 Note that this does mean mulitple attempts for Task could end up being completed. This is okay and should be acceptable. Better to be completed more than once than not completed at all.
 
+## What SimpleTaskQueue is Not
+SimpleTaskQueue is a simple to use task queue. It does its job. it doesn't do other jobs. This means there is a lot that it is not.
+
+### NOT a Streaming Data / Data Distribution Platform
+STQ does not send a lot of data around with each Task and Attempt. In fact, it just sends the commands to be run and some organizational data. The Tasks that run need to worry about sourcing input data and pushing output to the proper places. There are great tools/platforms/paradigms for moving data around. STQ is not one of these things.
+
+### NOT Environment Coordination / Infrastructure Setup / Configuration Synchronization
+You could use STQ to drive running the tasks to do Environment Coordination / Infrastructure Setup / Configuration Synchronization, but you would need to write all the playbooks/tasks/etc. necessary for this to work. STQ does not come with this out of the box. And it probably never will. If you need this and you don't want to write all the tasks and manage all the necessary code then use a different tool. Lots of people use lots of different tools for this. There are Dev Ops holy wars over the right ones to use. I'll leave it to you to find your own.
+
+### NOT a Timed Job Schedule (Yet?)
+STQ does not do timed tasks. There is no concept (yet) of starting a given job at a given time. This isn't cron or task scheduler (or whatever you like to use). If you want to have timed jobs then use something like CRON to kick off a script that uses STQ's RESTful interface to load a Task (or series of Tasks) into STQ. Just note that this does not guarantee that they get started at the time your job kicks off. This simply guarantees that your tasks are added to the job queue at that time.
+
+
 
