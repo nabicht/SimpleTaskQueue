@@ -192,9 +192,6 @@ class TaskAttempt:
     def is_completed(self):
         return self._status == TaskAttempt.COMPLETED
 
-    def is_started(self):
-        pass
-
     def is_in_process(self):
         return self._status < TaskAttempt.COMPLETED
 
