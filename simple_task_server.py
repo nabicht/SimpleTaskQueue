@@ -133,7 +133,11 @@ class Task(object):
         return start_time
 
     def completed_time(self):
-        # TODO unit test
+        """
+        Gets the time of the first completed attempt. If no completed attempt then it returns None.
+
+        :return: datetime.datetime
+        """
         min_close_time = None
         for attempt in self._attempts.itervalues():
             if attempt.completed():
