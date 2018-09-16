@@ -28,4 +28,4 @@ task_6_id = add_task(SERVER, "ls -l; exit 1", name="list", description="first is
 
 
 # now run the client
-main(SERVER, risky=True)
+main(SERVER, 20, "runner_1", risky=True)
