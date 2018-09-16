@@ -213,7 +213,7 @@ class MonitorTasks(Resource):
         elif list_type.lower() == "failed":
             done = task_manager.done_tasks()
             for task in done:
-                if task.failed():
+                if task.is_failed():
                     d = {"task_id": task.task_id(),
                          "status": "Failed",
                          "created": task.created_time.strftime(TIME_FORMAT),
@@ -231,7 +231,7 @@ class MonitorTasks(Resource):
                     d = {"task_id": task.task_id(),
                          "status": "Completed",
                          "created": task.created_time.strftime(TIME_FORMAT),
-                         "finished": task.finished_time().strftime(TIME_FORMAT),
+                         "finished": task.completed_time().strftime(TIME_FORMAT),
                          "name": task.name,
                          "description": task.desc,
                          "command": task.cmd,
