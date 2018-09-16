@@ -41,7 +41,7 @@ class TaskIDCreator:
 
 
 errors = {
-    'UnknownDependencyException': {
+    'UnknownRequirementException': {
         'message': "One or more specified dependent_on Task IDs are unknown by the server. Task not added!",
         'status': 400,
     },

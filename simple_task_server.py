@@ -22,7 +22,7 @@ import collections
 
 
 # Custom Exceptions
-class UnknownDependencyException(Exception):
+class UnknownRequirementException(Exception):
     pass
 
 
@@ -517,7 +517,7 @@ class TaskManager(object):
         # all tasks dependent_on must exist
         for task_id in task.dependent_on:
             if self._find_task(task_id, todo=True, in_process=True, done=True) is None:
-                raise UnknownDependencyException()
+                raise UnknownRequirementException()
         self._todo_queue.add_task(task)
         self._logger.info("TaskManager.add_task: Added Task %s to todo." % str(task.task_id()))
 
