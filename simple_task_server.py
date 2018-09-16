@@ -164,7 +164,6 @@ class Task(object):
 
 
 class TaskAttempt:
-    STARTED = 0
     COMPLETED = 30
     FAILED = 40
 
@@ -172,7 +171,6 @@ class TaskAttempt:
         self._attempt_id = uuid.uuid1().hex  # to avoid the whole json serialization of a UUID, i'm just going straight to hex
         self.runner = runner
         self.start_time = time_stamp
-        self._status = TaskAttempt.STARTED
         self._fail_reason = None
         self.completed_time = None
 
@@ -194,10 +192,10 @@ class TaskAttempt:
         return self._status == TaskAttempt.COMPLETED
 
     def is_started(self):
-        return self._status == TaskAttempt.STARTED
+        pass
 
     def is_in_process(self):
-        return TaskAttempt.STARTED <= self._status < TaskAttempt.COMPLETED
+        return self._status < TaskAttempt.COMPLETED
 
     def __hash__(self):
         return self._attempt_id
