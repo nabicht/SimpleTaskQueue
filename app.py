@@ -114,7 +114,7 @@ class TaskManagement(Resource):
         if deleted:
             return {"status": "task deleted", "task_id": args.task_id}, 200
         else:
-            return {"message": "task for %s not found, cannot delete" % args.task_id()}, 400
+            return {"message": "task for %s not found, cannot delete" % args.task_id}, 400
 
 
 class AttemptManagement(Resource):
