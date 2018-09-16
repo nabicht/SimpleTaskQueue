@@ -72,11 +72,11 @@ class Task(object):
                 break
         return completed
 
-    def in_process(self):
+    def is_in_process(self):
         in_proc = False
         if not self.is_completed() and not self.failed():
             for attempt in self._attempts.itervalues():
-                if attempt.in_process():
+                if attempt.is_in_process():
                     in_proc = True
                     break
         return in_proc
@@ -451,7 +451,7 @@ class TaskManager(object):
         return next_task, attempt
 
     def _find_task(self, task_id, todo=False, in_process=False, done=False):
-        self._logger.debug("TaskManager._find_task: Looking for Task %s in todo = %s, in_process = %s, done = %s" %
+        self._logger.debug("TaskManager._find_task: Looking for Task %s in todo = %s, is_in_process = %s, done = %s" %
                            (str(task_id), str(todo), str(in_process), str(done)))
         task = None
         if task is None and todo:
@@ -461,7 +461,7 @@ class TaskManager(object):
         if task is None and in_process:
             task = self._in_process.get_task(task_id)
             if task is not None:
-                self._logger.debug("TaskManager._find_task: Task %s found in in_process." % str(task_id))
+                self._logger.debug("TaskManager._find_task: Task %s found in is_in_process." % str(task_id))
         if task is None and done:
             task = self._done.get(task_id)
             if task is not None:
@@ -482,7 +482,7 @@ class TaskManager(object):
                 self._logger.info("TaskManager.fail_attempt: Task %s Attempt %s is last attempt failed. Moved to done" %
                                   (str(task_id), str(attempt_id)))
         else:
-            self._logger.warn("TaskManager.fail_attempt: Task %s not found in in_process or done. Can't fail task not in one of these sets." % str(task_id))
+            self._logger.warn("TaskManager.fail_attempt: Task %s not found in is_in_process or done. Can't fail task not in one of these sets." % str(task_id))
 
     def complete_attempt(self, task_id, attempt_id, time_stamp):
         task = self._find_task(task_id, in_process=True, done=True)
@@ -493,7 +493,7 @@ class TaskManager(object):
                 self._move_task_to_done(task)
                 return True
         else:
-            self._logger.warn("TaskManager.complete_attempt: Task %s not found in in_process or done. Can't complete task not in one of these sets." % str(task_id))
+            self._logger.warn("TaskManager.complete_attempt: Task %s not found in is_in_process or done. Can't complete task not in one of these sets." % str(task_id))
             return False
 
     def add_task(self, task):

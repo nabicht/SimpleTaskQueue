@@ -193,7 +193,7 @@ class MonitorTasks(Resource):
             in_process = task_manager.in_process_tasks()
             for task in in_process:
                 current_runner = ""
-                if task.most_recent_attempt().in_process():
+                if task.most_recent_attempt().is_in_process():
                     current_runner = task.most_recent_attempt().runner
                 d = {"task_id": task.task_id(),
                      "status": "In Process",
@@ -206,7 +206,7 @@ class MonitorTasks(Resource):
                      "duration": task.duration,
                      "attempted": task.num_attempts(),
                      "attempts_left": task.max_attempts - task.num_attempts(),
-                     "attempt_open": task.most_recent_attempt().in_process() is True,
+                     "attempt_open": task.most_recent_attempt().is_in_process() is True,
                      "current_runner": current_runner
                      }
                 list_of_tasks.append(d)

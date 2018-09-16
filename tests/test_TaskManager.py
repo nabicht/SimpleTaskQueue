@@ -112,7 +112,7 @@ def test_next_task_no_expired_or_failed(basic_task_manager):
     assert attempt.started()
     assert not attempt.failed()
     assert not attempt.completed()
-    assert attempt.in_process()
+    assert attempt.is_in_process()
     assert len(basic_task_manager._todo_queue) == 2
     assert len(basic_task_manager._in_process) == 1
     assert len(basic_task_manager._done) == 0
@@ -128,7 +128,7 @@ def test_next_task_no_expired_or_failed(basic_task_manager):
     assert attempt.started()
     assert not attempt.failed()
     assert not attempt.completed()
-    assert attempt.in_process()
+    assert attempt.is_in_process()
     assert len(basic_task_manager._todo_queue) == 1
     assert len(basic_task_manager._in_process) == 2
     assert len(basic_task_manager._done) == 0
@@ -144,7 +144,7 @@ def test_next_task_no_expired_or_failed(basic_task_manager):
     assert attempt.started()
     assert not attempt.failed()
     assert not attempt.completed()
-    assert attempt.in_process()
+    assert attempt.is_in_process()
     assert len(basic_task_manager._todo_queue) == 0
     assert len(basic_task_manager._in_process) == 3
     assert len(basic_task_manager._done) == 0
@@ -173,7 +173,7 @@ def test_mark_completed_when_in_process(basic_task_manager):
     assert len(basic_task_manager._in_process) == 0
     assert len(basic_task_manager._done) == 1
     assert task.is_completed()
-    assert not task.in_process()
+    assert not task.is_in_process()
     assert task.started()
     assert not task.failed()
     assert task.open_time() == 35.0
@@ -205,7 +205,7 @@ def test_mark_completed_when_multiple_attemtps_in_process(basic_task_manager):
     assert len(basic_task_manager._in_process) == 1
     assert len(basic_task_manager._done) == 1
     assert task1.is_completed()
-    assert not task1.in_process()
+    assert not task1.is_in_process()
     assert task1.started()
     assert not task1.failed()
     assert task1.open_time() == 35.0
@@ -242,7 +242,7 @@ def test_mark_completed_when_multiple_attempts_in_process_other_order(basic_task
     assert len(basic_task_manager._in_process) == 1
     assert len(basic_task_manager._done) == 1
     assert task2.is_completed()
-    assert not task2.in_process()
+    assert not task2.is_in_process()
     assert task2.started()
     assert not task2.failed()
     assert task2.open_time() == 35.0
@@ -303,7 +303,7 @@ def test_mark_completed_when_done():
     assert len(basic_task_manager._in_process) == 0
     assert len(basic_task_manager._done) == 1
     assert task.is_completed()
-    assert not task.in_process()
+    assert not task.is_in_process()
     assert task.started()
     assert not task.failed()
     assert task.open_time() == 35.5
@@ -316,7 +316,7 @@ def test_mark_completed_when_done():
     assert len(basic_task_manager._in_process) == 0
     assert len(basic_task_manager._done) == 1
     assert task.is_completed()
-    assert not task.in_process()
+    assert not task.is_in_process()
     assert task.started()
     assert not task.failed()
     assert task.open_time() == 35.5
@@ -368,7 +368,7 @@ def test_delete_from_inprocess(basic_task_manager):
     assert len(basic_task_manager._done) == 0
     assert basic_task_manager._find_task(1, todo=True) is not None
 
-    # move task to in_process
+    # move task to is_in_process
     basic_task_manager.start_next_attempt("runner", datetime.now())
     assert len(basic_task_manager._todo_queue) == 2
     assert len(basic_task_manager._in_process) == 1
@@ -392,7 +392,7 @@ def test_delete_from_done_when_completed(basic_task_manager):
     assert len(basic_task_manager._done) == 0
     assert basic_task_manager._find_task(1, todo=True) is not None
 
-    # move task to in_process
+    # move task to is_in_process
     task, attempt = basic_task_manager.start_next_attempt("runner", datetime.now())
     assert task.task_id() == 1
     assert len(basic_task_manager._todo_queue) == 2
@@ -426,7 +426,7 @@ def test_delete_from_done_when_failed(basic_task_manager):
     assert len(basic_task_manager._done) == 0
     assert basic_task_manager._find_task(1, todo=True) is not None
 
-    # move task to in_process
+    # move task to is_in_process
     task, attempt = basic_task_manager.start_next_attempt("runner", datetime.now())
     assert task.task_id() == 1
     assert len(basic_task_manager._todo_queue) == 2
