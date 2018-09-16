@@ -333,7 +333,8 @@ class OpenTasks(object):
                     failed_tasks.append(task)
                 else:
                     self._logger.debug("OpenTasks.task_to_retry: Task %s has %s attempt %d of %d. Should be retried." %
-                        (str(task.task_id()), "failed" if failed else "timed out", task.num_attempts(), task.max_attempts))
+                                       (str(task.task_id()), "failed" if failed else "timed out", task.num_attempts(),
+                                        task.max_attempts))
                     with_duration = task
                     break
 
