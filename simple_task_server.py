@@ -27,7 +27,7 @@ class UnknownDependencyException(Exception):
 
 
 # Task states are either to be done or complete
-# TaskAttempt states are in started, confirmed, in-process, completed, failed
+# TaskAttempt states are in is_started, confirmed, in-process, completed, failed
 
 class Task(object):
 
@@ -73,19 +73,29 @@ class Task(object):
         return completed
 
     def is_in_process(self):
-        in_proc = False
-        if not self.is_completed() and not self.failed():
-            for attempt in self._attempts.itervalues():
-                if attempt.is_in_process():
-                    in_proc = True
-                    break
-        return in_proc
+        """
+        Returns that the task is in process if there have been one or more attempts, not attempt is complete and not all
+         possible attempts have failed.
 
-    def started(self):
+        :return: bool
+        """
+        return not self.is_completed() and not self.is_failed() and len(self._attempts) > 0
+
+    def is_started(self):
+        """
+        Returns if the Task has been is_started. So if there is any attempt than it is is_started, regardless of if that
+         attempt has been completed or failed.
+
+        :return: bool
+        """
         return len(self._attempts) > 0
 
-    def failed(self):
-        # to be failed, all attempts need to be failed and number of attempts >= max attempts
+    def is_failed(self):
+        """
+        to be failed, all attempts need to be failed and number of attempts >= max attempts
+
+        :return: bool
+        """
         if len(self._attempts) >= self.max_attempts:
             failed = True
             for attempt in self._attempts.itervalues():
@@ -104,21 +114,25 @@ class Task(object):
         :return: total seconds as a float.
         """
         # TODO unit test
-        min_close_time = self.finished_time()
+        min_close_time = self.completed_time()
         if min_close_time is not None:
             return (min_close_time - self.created_time).total_seconds()
         else:
             return None
 
     def started_time(self):
-        # TODO unit test
+        """
+        The time the first attempt was started. None if no attempts.
+
+        :return: datetime.datetime
+        """
         start_time = None
         if len(self._attempts) > 0:
             # this is a hacky way to get fast access to the value of the first item in the dictionary
             start_time = self._attempts.iteritems().next()[1].start_time
         return start_time
 
-    def finished_time(self):
+    def completed_time(self):
         # TODO unit test
         min_close_time = None
         for attempt in self._attempts.itervalues():
