@@ -255,7 +255,7 @@ def task_queue_overview():
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description="Process the command line arguments for STQ's flask server.")
     parser.add_argument("-host", action="store", dest="host", nargs=1,
                         default='127.0.0.1', required=False,
                         help="The host. Defaults to 127.0.0.1")
