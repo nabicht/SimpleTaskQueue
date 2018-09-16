@@ -173,6 +173,7 @@ class TaskAttempt:
         self.start_time = time_stamp
         self._fail_reason = None
         self.completed_time = None
+        self._status = 0
 
     def id(self):
         return self._attempt_id
