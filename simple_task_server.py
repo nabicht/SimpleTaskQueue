@@ -49,7 +49,7 @@ class Task(object):
 
         Will return None if cannot be attempted because above max attempts.
         """
-        if len(self._attempts) > self.max_attempts:
+        if len(self._attempts) >= self.max_attempts:
             return None
         attempt = TaskAttempt(runner, time_stamp)
         self._attempts[attempt.id()] = self._most_recent_attempt = attempt
@@ -97,6 +97,12 @@ class Task(object):
         return failed
 
     def open_time(self):
+        """
+        The amount of time between when a task is created and when it is completed. If the task fails or if the task
+         has not had one Attempt that was completed yet, then it will be None.
+
+        :return: total seconds as a float.
+        """
         # TODO unit test
         min_close_time = self.finished_time()
         if min_close_time is not None:
@@ -370,7 +376,6 @@ class OpenTasks(object):
         tasks = []
         tasks.extend(self._durations.values())
         tasks.extend(self._no_durations.values())
-        # todo unit test sorting
         return sorted(tasks, key=lambda task: task.created_time)
 
     def __len__(self):
