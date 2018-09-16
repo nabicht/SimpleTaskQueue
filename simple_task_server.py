@@ -113,7 +113,6 @@ class Task(object):
 
         :return: total seconds as a float.
         """
-        # TODO unit test
         min_close_time = self.completed_time()
         if min_close_time is not None:
             return (min_close_time - self.created_time).total_seconds()
@@ -405,10 +404,13 @@ class TaskManager(object):
         self._logger = logger
 
     def _move_task_to_done(self, task):
-        # TODO unit test this
         task_id = task.task_id()
-        self._in_process.remove_task(task_id)
-        self._logger.debug("TaskManager._move_task_to_done: Task %s removed from in process tasks." % str(task_id))
+        if self._find_task(task_id, in_process=True) is not None:
+            self._in_process.remove_task(task_id)
+            self._logger.debug("TaskManager._move_task_to_done: Task %s removed from in process tasks." % str(task_id))
+        elif self._find_task(task_id, todo=True) is not None:
+            self._todo_queue.remove_task(task_id)
+            self._logger.debug("TaskManager._move_task_to_done: Task %s removed from todo tasks." % str(task_id))
         self._done[task.task_id()] = task
         self._logger.debug("TaskManager._move_task_to_done: Task %s added to done tasks." % str(task_id))
 
@@ -431,7 +433,6 @@ class TaskManager(object):
             todo_ids = self._todo_queue.task_ids()
             # as long as not every task_id in todo_queue is in skip_tasks, we keep trying
             while not skip_task_ids.issuperset(todo_ids):
-                # TODO unit test this functionality
                 possible_next_task = self._todo_queue.next_task(skip_task_ids=skip_task_ids)
                 # if any dependency is not done, then we need to continue
                 can_run = True

@@ -441,3 +441,130 @@ def test_delete_from_done_when_failed(basic_task_manager):
     assert len(basic_task_manager._in_process) == 0
     assert len(basic_task_manager._done) == 0
     assert basic_task_manager._find_task(1, done=True) is None
+
+
+def test_move_task_to_done_when_in_process(basic_task_manager):
+    task, attempt = basic_task_manager.start_next_attempt("runner", datetime.now())
+    assert task.task_id() == 1
+    assert len(basic_task_manager._todo_queue) == 2
+    assert len(basic_task_manager._in_process) == 1
+    assert len(basic_task_manager._done) == 0
+    assert basic_task_manager._find_task(1, todo=True) is None
+    assert basic_task_manager._find_task(1, in_process=True) is not None
+
+    basic_task_manager._move_task_to_done(task)
+    assert len(basic_task_manager._todo_queue) == 2
+    assert len(basic_task_manager._in_process) == 0
+    assert len(basic_task_manager._done) == 1
+    assert basic_task_manager._find_task(1, todo=True) is None
+    assert basic_task_manager._find_task(1, in_process=True) is None
+    assert basic_task_manager._find_task(1, done=True) is not None
+
+
+def test_move_task_to_done_when_not_in_process():
+    time_stamp = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=5, microsecond=100222)
+    tq = SimpleTaskQueue(LOGGER)
+    t1 = Task(1, "run command example", time_stamp, name="example run",
+              desc="this is a bologna command that does nothing")
+    tq.add_task(t1)
+    t2 = Task(2, "python -m some_script", time_stamp,
+              name="example python run that will only try to run once and should last 3 minutes")
+    tq.add_task(t2)
+    t3 = Task(3, "cd my_directory; python -m some_script", time_stamp, name="multiple commands",
+              desc="an example of multiple commands in  one task")
+    tq.add_task(t3)
+    tm = TaskManager(LOGGER)
+    tm._todo_queue = tq
+
+    assert len(tm._todo_queue) == 3
+    assert len(tm._in_process) == 0
+    assert len(tm._done) == 0
+    assert tm._find_task(1, todo=True) is not None
+    assert tm._find_task(1, in_process=True) is None
+    assert tm._find_task(1, done=True) is None
+
+    tm._move_task_to_done(t1)
+    assert len(tm._todo_queue) == 2
+    assert len(tm._in_process) == 0
+    assert len(tm._done) == 1
+    assert tm._find_task(1, todo=True) is None
+    assert tm._find_task(1, in_process=True) is None
+    assert tm._find_task(1, done=True) is not None
+
+
+def test_find_task_non_existant(basic_task_manager):
+    assert basic_task_manager._find_task("NON existant task id", todo=True, in_process=True, done=True) is None
+
+
+def test_find_task_todo_looking_in_in_process(basic_task_manager):
+    assert basic_task_manager._find_task(1, todo=False, in_process=True, done=False) is None
+
+
+def test_find_task_todo_looking_in_done(basic_task_manager):
+    assert basic_task_manager._find_task(1, todo=False, in_process=False, done=True) is None
+
+
+def test_find_task_todo_looking_in_todo(basic_task_manager):
+    assert basic_task_manager._find_task(1, todo=True, in_process=False, done=False).task_id() == 1
+
+
+def test_find_task_todo_looking_in_all(basic_task_manager):
+    assert basic_task_manager._find_task(1, todo=True, in_process=True, done=True).task_id() == 1
+
+
+def test_find_task_inprocess_looking_in_in_process(basic_task_manager):
+    time_stamp = datetime(year=2018, month=8, day=13, hour=7, minute=10, second=5, microsecond=100222)
+    task, attempt = basic_task_manager.start_next_attempt("runner", time_stamp)
+    assert basic_task_manager._find_task(1, todo=False, in_process=True, done=False) == task
+
+
+def test_find_task_inprocess_looking_in_done(basic_task_manager):
+    time_stamp = datetime(year=2018, month=8, day=13, hour=7, minute=10, second=5, microsecond=100222)
+    basic_task_manager.start_next_attempt("runner", time_stamp)
+    assert basic_task_manager._find_task(1, todo=False, in_process=False, done=True) is None
+
+
+def test_find_task_inprocess_looking_in_todo(basic_task_manager):
+    time_stamp = datetime(year=2018, month=8, day=13, hour=7, minute=10, second=5, microsecond=100222)
+    basic_task_manager.start_next_attempt("runner", time_stamp)
+    assert basic_task_manager._find_task(1, todo=True, in_process=False, done=False) is None
+
+
+def test_find_task_inprocess_looking_in_all(basic_task_manager):
+    time_stamp = datetime(year=2018, month=8, day=13, hour=7, minute=10, second=5, microsecond=100222)
+    task, attempt = basic_task_manager.start_next_attempt("runner", time_stamp)
+    assert basic_task_manager._find_task(1, todo=True, in_process=True, done=True) == task
+
+
+def test_find_task_done_looking_in_in_process(basic_task_manager):
+    time_stamp = datetime(year=2018, month=8, day=13, hour=7, minute=10, second=5, microsecond=100222)
+    task, attempt = basic_task_manager.start_next_attempt("runner", time_stamp)
+    task = basic_task_manager._find_task(task.task_id(), in_process=True)
+    basic_task_manager._move_task_to_done(task)
+    assert basic_task_manager._find_task(1, todo=False, in_process=True, done=False) is None
+
+
+def test_find_task_done_looking_in_done(basic_task_manager):
+    time_stamp = datetime(year=2018, month=8, day=13, hour=7, minute=10, second=5, microsecond=100222)
+    task, attempt = basic_task_manager.start_next_attempt("runner", time_stamp)
+    task = basic_task_manager._find_task(task.task_id(), in_process=True)
+    basic_task_manager._move_task_to_done(task)
+    assert basic_task_manager._find_task(1, todo=False, in_process=False, done=True) == task
+
+
+def test_find_task_done_looking_in_todo(basic_task_manager):
+    time_stamp = datetime(year=2018, month=8, day=13, hour=7, minute=10, second=5, microsecond=100222)
+    task, attempt = basic_task_manager.start_next_attempt("runner", time_stamp)
+    task = basic_task_manager._find_task(task.task_id(), in_process=True)
+    basic_task_manager._move_task_to_done(task)
+    assert basic_task_manager._find_task(1, todo=True, in_process=False, done=False) is None
+
+
+def test_find_task_done_looking_in_all(basic_task_manager):
+    time_stamp = datetime(year=2018, month=8, day=13, hour=7, minute=10, second=5, microsecond=100222)
+    task, attempt = basic_task_manager.start_next_attempt("runner", time_stamp)
+    task = basic_task_manager._find_task(task.task_id(), in_process=True)
+    basic_task_manager._move_task_to_done(task)
+    assert basic_task_manager._find_task(1, todo=True, in_process=True, done=True) == task
+
+
