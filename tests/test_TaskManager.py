@@ -109,9 +109,9 @@ def test_next_task_no_expired_or_failed(basic_task_manager):
     assert task.most_recent_attempt().id() == attempt.id()  # TODO attempt equality
     assert attempt.start_time == time
     assert attempt.runner == runner
-    assert attempt.started()
-    assert not attempt.failed()
-    assert not attempt.completed()
+    assert attempt.is_started()
+    assert not attempt.is_failed()
+    assert not attempt.is_completed()
     assert attempt.is_in_process()
     assert len(basic_task_manager._todo_queue) == 2
     assert len(basic_task_manager._in_process) == 1
@@ -125,9 +125,9 @@ def test_next_task_no_expired_or_failed(basic_task_manager):
     assert task.most_recent_attempt().id() == attempt.id()  # TODO attempt equality
     assert attempt.start_time == time
     assert attempt.runner == runner
-    assert attempt.started()
-    assert not attempt.failed()
-    assert not attempt.completed()
+    assert attempt.is_started()
+    assert not attempt.is_failed()
+    assert not attempt.is_completed()
     assert attempt.is_in_process()
     assert len(basic_task_manager._todo_queue) == 1
     assert len(basic_task_manager._in_process) == 2
@@ -141,9 +141,9 @@ def test_next_task_no_expired_or_failed(basic_task_manager):
     assert task.most_recent_attempt().id() == attempt.id()  # TODO attempt equality
     assert attempt.start_time == time
     assert attempt.runner == runner
-    assert attempt.started()
-    assert not attempt.failed()
-    assert not attempt.completed()
+    assert attempt.is_started()
+    assert not attempt.is_failed()
+    assert not attempt.is_completed()
     assert attempt.is_in_process()
     assert len(basic_task_manager._todo_queue) == 0
     assert len(basic_task_manager._in_process) == 3
@@ -174,8 +174,8 @@ def test_mark_completed_when_in_process(basic_task_manager):
     assert len(basic_task_manager._done) == 1
     assert task.is_completed()
     assert not task.is_in_process()
-    assert task.started()
-    assert not task.failed()
+    assert task.is_started()
+    assert not task.is_failed()
     assert task.open_time() == 35.0
 
 
@@ -206,13 +206,13 @@ def test_mark_completed_when_multiple_attemtps_in_process(basic_task_manager):
     assert len(basic_task_manager._done) == 1
     assert task1.is_completed()
     assert not task1.is_in_process()
-    assert task1.started()
-    assert not task1.failed()
+    assert task1.is_started()
+    assert not task1.is_failed()
     assert task1.open_time() == 35.0
 
     assert not task2.is_completed()
-    assert task2.started()
-    assert not task2.failed()
+    assert task2.is_started()
+    assert not task2.is_failed()
     assert task2.open_time() is None
 
 
@@ -243,13 +243,13 @@ def test_mark_completed_when_multiple_attempts_in_process_other_order(basic_task
     assert len(basic_task_manager._done) == 1
     assert task2.is_completed()
     assert not task2.is_in_process()
-    assert task2.started()
-    assert not task2.failed()
+    assert task2.is_started()
+    assert not task2.is_failed()
     assert task2.open_time() == 35.0
 
     assert not task1.is_completed()
-    assert task1.started()
-    assert not task1.failed()
+    assert task1.is_started()
+    assert not task1.is_failed()
     assert task1.open_time() is None
 
 
@@ -304,8 +304,8 @@ def test_mark_completed_when_done():
     assert len(basic_task_manager._done) == 1
     assert task.is_completed()
     assert not task.is_in_process()
-    assert task.started()
-    assert not task.failed()
+    assert task.is_started()
+    assert not task.is_failed()
     assert task.open_time() == 35.5
 
     # mark completed again
@@ -317,8 +317,8 @@ def test_mark_completed_when_done():
     assert len(basic_task_manager._done) == 1
     assert task.is_completed()
     assert not task.is_in_process()
-    assert task.started()
-    assert not task.failed()
+    assert task.is_started()
+    assert not task.is_failed()
     assert task.open_time() == 35.5
 
 

@@ -67,7 +67,7 @@ class Task(object):
     def is_completed(self):
         completed = False
         for attempt in self._attempts.itervalues():
-            if attempt.completed():
+            if attempt.is_completed():
                 completed = True
                 break
         return completed
@@ -99,7 +99,7 @@ class Task(object):
         if len(self._attempts) >= self.max_attempts:
             failed = True
             for attempt in self._attempts.itervalues():
-                if not attempt.failed():
+                if not attempt.is_failed():
                     failed = False
                     break
         else:
@@ -140,7 +140,7 @@ class Task(object):
         """
         min_close_time = None
         for attempt in self._attempts.itervalues():
-            if attempt.completed():
+            if attempt.is_completed():
                 if min_close_time is None:
                     min_close_time = attempt.completed_time
                 else:
@@ -187,16 +187,16 @@ class TaskAttempt:
         self._status = TaskAttempt.COMPLETED
         self.completed_time = time_stamp
 
-    def failed(self):
+    def is_failed(self):
         return self._status == TaskAttempt.FAILED
 
-    def completed(self):
+    def is_completed(self):
         return self._status == TaskAttempt.COMPLETED
 
-    def started(self):
+    def is_started(self):
         return self._status == TaskAttempt.STARTED
 
-    def in_process(self):
+    def is_in_process(self):
         return TaskAttempt.STARTED <= self._status < TaskAttempt.COMPLETED
 
     def __hash__(self):
@@ -316,7 +316,7 @@ class OpenTasks(object):
         failed_tasks = []
         no_duration = None
         for task in self._no_durations.itervalues():
-            if task.most_recent_attempt().failed():
+            if task.most_recent_attempt().is_failed():
                 if task.num_attempts() >= task.max_attempts:
                     self._logger.debug("OpenTasks.task_to_retry: Task %s has failed attempt %d of %d. Treating it as failed." %
                                        (str(task.task_id()), task.num_attempts(), task.max_attempts))
@@ -329,7 +329,7 @@ class OpenTasks(object):
 
         with_duration = None
         for task in self._durations.itervalues():
-            failed = task.most_recent_attempt().failed()
+            failed = task.most_recent_attempt().is_failed()
             timed_out = (current_time - task.most_recent_attempt().start_time).total_seconds() > task.duration
             if failed or timed_out:
                 if task.num_attempts() >= task.max_attempts:
