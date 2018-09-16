@@ -1,4 +1,4 @@
-[Latest Release] (https://github.com/nabicht/SimpleTaskQueue/releases/tag/0.1.0)
+Latest Release: [v0.1.0](https://github.com/nabicht/SimpleTaskQueue/releases/tag/0.1.0)
 
 # About SimpleTaskQueue
 SimpleTaskQueue (STQ) is a simple to deploy and use task queue that coordinates distributed, parallel work.
