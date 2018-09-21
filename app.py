@@ -263,6 +263,6 @@ if __name__ == '__main__':
                         default=5000, required=False,
                         help="The port. Defaults to 5000")
     cmd_args = parser.parse_args()
-    app.run(host=cmd_args.host[0], port=cmd_args.port[0])
+    app.run(host=cmd_args.host[0], port=cmd_args.port[0], threaded=False)
 
 
