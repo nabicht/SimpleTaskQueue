@@ -54,7 +54,7 @@ api = Api(app, catch_all_404s=True, errors=errors)
 task_id_creator = TaskIDCreator()
 
 log_file_name = util.time_stamped_file_name("stq")
-logger = util.basic_logger(log_file_name, file_level=logging.DEBUG, console_level=logging.DEBUG)
+logger = util.basic_logger(log_file_name=log_file_name, file_level=logging.DEBUG, console_level=logging.DEBUG)
 
 task_manager = TaskManager(logger)
 

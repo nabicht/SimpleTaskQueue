@@ -18,22 +18,33 @@ import datetime
 import logging
 
 
-def basic_logger(log_file_name, file_level=logging.INFO, console_level=logging.INFO):
+def basic_logger(log_file_name=None, file_level=None, console_level=None):
+    if file_level is None and console_level is None:  # no log to configure so return None
+        return None
     formatter = logging.Formatter('%(asctime)s: %(levelname)s: %(message)s')
     logger = logging.getLogger(__name__)
-    logger.setLevel(min(file_level, console_level))
-    # console handler for warning and worse
-    ch = logging.StreamHandler()
-    ch.setLevel(console_level)
-    ch.setFormatter(formatter)
-    logger.addHandler(ch)
-    # file handler for everything
-    fh = logging.FileHandler(log_file_name, mode='a')
-    fh.setLevel(file_level)
-    fh.setFormatter(formatter)
-    logger.addHandler(fh)
+    if file_level is not None and console_level is not None:
+        logger.setLevel(min(file_level, console_level))
+    else:
+        # both being None is handled above, so one of them needs to be not None here
+        if file_level is not None:
+            logger.setLevel(file_level)
+        else:
+            logger.setLevel(console_level)
+    if console_level is not None:
+        ch = logging.StreamHandler()
+        ch.setLevel(console_level)
+        ch.setFormatter(formatter)
+        logger.addHandler(ch)
+    if file_level is not None:
+        if log_file_name is None:
+            log_file_name = time_stamped_file_name("STQ")
+        fh = logging.FileHandler(log_file_name, mode='a')
+        fh.setLevel(file_level)
+        fh.setFormatter(formatter)
+        logger.addHandler(fh)
     return logger
 
 
 def time_stamped_file_name(log_file_prefix):
-    return '%s_%s.log' % (log_file_prefix, datetime.datetime.now().strftime("%Y%m%d-%H%M%S%f"))
+    return '%s_%s.log' % (log_file_prefix, datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
