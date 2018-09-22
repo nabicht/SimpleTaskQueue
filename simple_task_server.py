@@ -553,7 +553,7 @@ class TaskManager(object):
         tasks = []
         tasks.extend(self.todo_tasks())
         tasks.extend(self.in_process_tasks())
-        tasks.extend(self.in_process_tasks())
+        tasks.extend(self.done_tasks())
         for task in tasks:
             if task_id in task.dependent_on:
                 dependencies.append(task_id)
