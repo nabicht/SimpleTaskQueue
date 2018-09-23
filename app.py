@@ -28,7 +28,7 @@ import logging
 import argparse
 
 
-TIME_FORMAT = "%Y-%m-%d %H:%M:%S"
+TIME_FORMAT = "%Y-%m-%d %H:%M:%S.%f"
 
 
 class TaskIDCreator:
@@ -197,7 +197,7 @@ class MonitorTasks(Resource):
                     current_runner = task.most_recent_attempt().runner
                 d = {"task_id": task.task_id(),
                      "status": "In Process",
-                     "created": str(task.created_time),
+                     "created": task.created_time.strftime(TIME_FORMAT),
                      "started": task.started_time().strftime(TIME_FORMAT),
                      "name": task.name,
                      "description": task.desc,

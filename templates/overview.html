@@ -114,7 +114,15 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
             "ajax": "/listtasks/todo",
             // add column definitions to map your json to the table
             "columns": [
-                {data: "created"},
+                {
+                    data: "created",
+                    render: function (data, type, row) {
+                        var dateSplit = data.split('.');
+                        return type === "display" || type === "filter" ?
+                            dateSplit[0] :
+                            data;
+                    }
+                },
                 {data: "command"},
                 {data: "duration"},
                 {data: "dependent_on"},
@@ -133,8 +141,24 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
             "ajax": "/listtasks/inprocess",
             // add column definitions to map your json to the table
             "columns": [
-                {data: "created"},
-                {data: "started"},
+                {
+                    data: "created",
+                    render: function (data, type, row) {
+                        var dateSplit = data.split('.');
+                        return type === "display" || type === "filter" ?
+                            dateSplit[0] :
+                            data;
+                    }
+                },
+                {
+                    data: "started",
+                    render: function (data, type, row) {
+                        var dateSplit = data.split('.');
+                        return type === "display" || type === "filter" ?
+                            dateSplit[0] :
+                            data;
+                    }
+                },
                 {data: "command"},
                 {data: "duration"},
                 {data: "dependent_on"},
@@ -156,7 +180,15 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
             "ajax": "/listtasks/failed",
             // add column definitions to map your json to the table
             "columns": [
-                {data: "created"},
+                {
+                    data: "created",
+                    render: function (data, type, row) {
+                        var dateSplit = data.split('.');
+                        return type === "display" || type === "filter" ?
+                            dateSplit[0] :
+                            data;
+                    }
+                },
                 {data: "command"},
                 {data: "attempts"},
                 {data: "dependencies"},
@@ -174,8 +206,24 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
             "ajax": "/listtasks/completed",
             // add column definitions to map your json to the table
             "columns": [
-                {data: "created"},
-                {data: "finished"},
+                {
+                    data: "created",
+                    render: function (data, type, row) {
+                        var dateSplit = data.split('.');
+                        return type === "display" || type === "filter" ?
+                            dateSplit[0] :
+                            data;
+                    }
+                },
+                {
+                    data: "created",
+                    render: function (data, type, row) {
+                        var dateSplit = data.split('.');
+                        return type === "display" || type === "filter" ?
+                            dateSplit[0] :
+                            data;
+                    }
+                },
                 {data: "command"},
                 {data: "attempts"},
                 {data: "dependencies"},
