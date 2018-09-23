@@ -27,7 +27,7 @@ import logging
 from collections import OrderedDict
 
 
-def add_task(server, command, name=None, description=None, dependent_on=None, max_attempts=None, duration=None):
+def add_task(server, command, name=None, description=None, dependent_on=None, max_attempts=None, duration=None, log=None):
     payload = {"command": command}
     if name is not None:
         payload["name"] = str(name)
@@ -42,46 +42,77 @@ def add_task(server, command, name=None, description=None, dependent_on=None, ma
         payload['max_attempts'] = max_attempts
     if duration is not None:
         payload['duration'] = duration
-    r = requests.post(urljoin(server,  "task"), data=payload)
+    url = urljoin(server, "task")
+    if log is not None:
+        logger.debug("add_task post: %s  %s" % (str(url), str(payload)))
+    r = requests.post(url, data=payload)
+    if log is not None:
+        logger.debug("add_task received: %s" % r.text)
     response_dict = json.loads(r.text)
     return str(response_dict['task_id'])
 
 
-def delete_task(server, task_id):
-    r = requests.delete(urljoin(server, "task"), data={'task_id': task_id})
+def delete_task(server, task_id, log=None):
+    url = urljoin(server, "task")
+    payload = {'task_id': task_id}
+    if log is not None:
+        logger.debug("delete_task delete: %s  %s" % (str(url), str(payload)))
+    r = requests.delete(url, data=payload)
+    if log is not None:
+        logger.debug("delete_task received: %s" % r.text)
     return json.loads(r.text)
 
 
-def report_failed_attempt(server, runner_id, task_id, attempt_id, message=None):
+def report_failed_attempt(server, runner_id, task_id, attempt_id, message=None, log=None):
     payload = {'runner_id': runner_id,
                'task_id': task_id,
                'attempt_id': attempt_id,
                'status': 'failed'}
     if message is not None:
         payload['message'] = message
-    r = requests.put(urljoin(server, "attempt"), data=payload)
+    url = urljoin(server, "attempt")
+    if log is not None:
+        logger.debug("report_failed_attempt put: %s  %s" % (str(url), str(payload)))
+    r = requests.put(url, data=payload)
+    if log is not None:
+        logger.debug("report_failed_attempt received: %s" % r.text)
     return json.loads(r.text)
 
 
-def report_completed_attempt(server, runner_id, task_id, attempt_id, message=None):
+def report_completed_attempt(server, runner_id, task_id, attempt_id, message=None, log=None):
     payload = {'runner_id': runner_id,
                'task_id': task_id,
                'attempt_id': attempt_id,
                'status': 'completed'}
     if message is not None:
         payload['message'] = message
-    r = requests.put(urljoin(server, "attempt"), data=payload)
+    url = urljoin(server, "attempt")
+    if log is not None:
+        logger.debug("report_completed_attempt put: %s  %s" % (str(url), str(payload)))
+    r = requests.put(url, data=payload)
+    if log is not None:
+        logger.debug("report_completed_attempt received: %s" % r.text)
     return json.loads(r.text)
 
 
-def get_next_attempt(server, runner_id):
+def get_next_attempt(server, runner_id, log=None):
     payload = {'runner_id': runner_id}
-    r = requests.get(urljoin(server, 'attempt'), params=payload)
+    url = urljoin(server, 'attempt')
+    if log is not None:
+        logger.debug("get_next_attempt get: %s  %s" % (str(url), str(payload)))
+    r = requests.get(url, params=payload)
+    if log is not None:
+        logger.debug("get_next_attempt received: %s" % r.text)
     return json.loads(r.text)
 
 
-def get_tasks(server, task_type):
-    r = requests.get(urljoin(server, 'listtasks/%s' % task_type))
+def get_tasks(server, task_type, log=None):
+    url = urljoin(server, 'listtasks/%s' % task_type)
+    if log is not None:
+        logger.debug("get_tasks get: %s" % str(url))
+    r = requests.get(url)
+    if log is not None:
+        logger.debug("get_tasks received: %s" % r.text)
     d = json.loads(r.text)
     tasks = {}
     if d is not None:
@@ -90,20 +121,20 @@ def get_tasks(server, task_type):
     return tasks
 
 
-def get_todo_tasks(server):
-    return get_tasks(server, "todo")
+def get_todo_tasks(server, log=None):
+    return get_tasks(server, "todo", log)
 
 
-def get_inprocess_tasks(server):
-    return get_tasks(server, "inprocess")
+def get_inprocess_tasks(server, log=None):
+    return get_tasks(server, "inprocess", log)
 
 
-def get_failed_tasks(server):
-    return get_tasks(server, "failed")
+def get_failed_tasks(server, log=None):
+    return get_tasks(server, "failed", log)
 
 
-def get_completed_tasks(server):
-    return get_tasks(server, "completed")
+def get_completed_tasks(server, log=None):
+    return get_tasks(server, "completed", log)
 
 
 def main(server, wait_seconds, runner_id, log, risky=False):
