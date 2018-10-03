@@ -25,4 +25,4 @@ task_3_id = add_task(SERVER, "exit 1", name="non zero exit", description="first 
 task_4_id = add_task(SERVER, "python -m this", name="python ", description="a simple python test")
 
 # now run the client
-main(SERVER, 20, "runner_1", risky=False)
+main(SERVER, 20, "runner_1", None, risky=False)

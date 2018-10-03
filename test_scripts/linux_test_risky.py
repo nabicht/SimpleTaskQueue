@@ -16,6 +16,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 from simple_task_client import add_task
 from simple_task_runner import main
+import util
 
 SERVER = 'http://localhost:5000/'
 
@@ -28,4 +29,4 @@ task_6_id = add_task(SERVER, "ls -l; exit 1", name="list", description="first is
 
 
 # now run the client
-main(SERVER, 20, "runner_1", risky=True)
+main(SERVER, 20, "runner_1", None, risky=True)
