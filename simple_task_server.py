@@ -65,8 +65,12 @@ class Task(object):
         return self.__task_id
 
     def is_completed(self):
+        try:
+            values = self._attempts.itervalues()
+        except AttributeError:
+            values = self._attempts.values()
         completed = False
-        for attempt in self._attempts.itervalues():
+        for attempt in values:
             if attempt.is_completed():
                 completed = True
                 break
@@ -97,8 +101,12 @@ class Task(object):
         :return: bool
         """
         if len(self._attempts) >= self.max_attempts:
+            try:
+                values = self._attempts.itervalues()
+            except AttributeError:
+                values = self._attempts.values()
             failed = True
-            for attempt in self._attempts.itervalues():
+            for attempt in values:
                 if not attempt.is_failed():
                     failed = False
                     break
@@ -128,7 +136,11 @@ class Task(object):
         start_time = None
         if len(self._attempts) > 0:
             # this is a hacky way to get fast access to the value of the first item in the dictionary
-            start_time = self._attempts.iteritems().next()[1].start_time
+            try:
+                values = self._attempts.itervalues()
+            except AttributeError:
+                values = self._attempts.values()
+            start_time = values.next()[1].start_time
         return start_time
 
     def completed_time(self):
@@ -137,8 +149,12 @@ class Task(object):
 
         :return: datetime.datetime
         """
+        try:
+            values = self._attempts.itervalues()
+        except AttributeError:
+            values = self._attempts.values()
         min_close_time = None
-        for attempt in self._attempts.itervalues():
+        for attempt in values:
             if attempt.is_completed():
                 if min_close_time is None:
                     min_close_time = attempt.completed_time
@@ -233,7 +249,11 @@ class SimpleTaskQueue(TaskQueue):
 
     def next_task(self, skip_task_ids=None):
         task_to_send_back = None
-        for task in self._queue.itervalues():
+        try:
+            values = self._queue.itervalues()
+        except AttributeError:
+            values = self._queue.values()
+        for task in values:
             if skip_task_ids is not None and task.task_id() in skip_task_ids:
                 self._logger.debug("SimpleTaskQueue.next_task: Task %s is in skip_task_ids so skipping it." % str(task.task_id()))
                 continue
@@ -310,7 +330,11 @@ class OpenTasks(object):
         #  so we need to get the first one to be redone from each dict and then take the oldest of those two
         failed_tasks = []
         no_duration = None
-        for task in self._no_durations.itervalues():
+        try:
+            no_duration_values = self._no_durations.itervalues()
+        except AttributeError:
+            no_duration_values = self._no_durations.values()
+        for task in no_duration_values:
             if task.most_recent_attempt().is_failed():
                 if task.num_attempts() >= task.max_attempts:
                     self._logger.debug("OpenTasks.task_to_retry: Task %s has failed attempt %d of %d. Treating it as failed." %
@@ -323,7 +347,11 @@ class OpenTasks(object):
                     break
 
         with_duration = None
-        for task in self._durations.itervalues():
+        try:
+            duration_values = self._durations.itervalues()
+        except AttributeError:
+            duration_values = self._durations.values()
+        for task in duration_values:
             failed = task.most_recent_attempt().is_failed()
             timed_out = (current_time - task.most_recent_attempt().start_time).total_seconds() > task.duration
             if failed or timed_out:
