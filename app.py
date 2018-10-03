@@ -257,10 +257,10 @@ def task_queue_overview():
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("-host", action="store", dest="host", nargs=1,
-                        default='127.0.0.1', required=False,
+                        default=['127.0.0.1'], required=False,
                         help="The host. Defaults to 127.0.0.1")
     parser.add_argument("-port", action="store", dest="port", type=int, nargs=1,
-                        default=5000, required=False,
+                        default=[5000], required=False,
                         help="The port. Defaults to 5000")
     cmd_args = parser.parse_args()
     app.run(host=cmd_args.host[0], port=cmd_args.port[0], threaded=False)
