@@ -44,7 +44,8 @@ def main(server, wait_seconds, runner_id, log, risky=False):
                     subprocess.check_call(shlex.split(cmd))
                 stc.report_completed_attempt(server, runner_id, attempt_info['task_id'], attempt_info['attempt_id'])
             except Exception as e:
-                log.exception("Issue running and/or reporting.")
+                if log is not None:
+                    log.exception("Issue running and/or reporting.")
                 stc.report_failed_attempt(server, runner_id, attempt_info['task_id'], attempt_info['attempt_id'], message=str(e))
         else:
             if log is not None:
