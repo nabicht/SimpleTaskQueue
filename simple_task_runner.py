@@ -19,7 +19,7 @@ import shlex
 import subprocess
 import time
 import uuid
-from . import util
+import util
 import logging
 from collections import OrderedDict
 import simple_task_client as stc
