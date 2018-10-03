@@ -20,11 +20,11 @@ import json
 import shlex
 import subprocess
 import time
-from urlparse import urljoin
 import uuid
 import util
 import logging
 from collections import OrderedDict
+from requests.compat import urljoin
 
 
 def add_task(server, command, name=None, description=None, dependent_on=None, max_attempts=None, duration=None, log=None):
@@ -166,8 +166,8 @@ def main(server, wait_seconds, runner_id, log, risky=False):
 
 if __name__ == "__main__":
     # using OrderedDict so that use in strings below is in order I define
-    log_level_str_to_level = OrderedDict([("DEBUG", logging.DEBUG),("INFO", logging.INFO),
-                                          ("WARNING", logging.WARNING),("ERROR", logging.ERROR)])
+    log_level_str_to_level = OrderedDict([("DEBUG", logging.DEBUG), ("INFO", logging.INFO),
+                                          ("WARNING", logging.WARNING), ("ERROR", logging.ERROR)])
     parser = argparse.ArgumentParser()
     temp_runner_id = str(uuid.uuid1())
     parser.add_argument('-s', action="store", dest="server_url", required=True,
