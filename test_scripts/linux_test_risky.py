@@ -15,7 +15,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 """
 
 from simple_task_client import add_task
-from simple_task_client import main
+from simple_task_runner import main
 
 SERVER = 'http://localhost:5000/'
 
