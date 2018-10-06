@@ -237,7 +237,7 @@ class OpenTasks(object):
 
 class TaskManager(object):
 
-    def __init__(self, logger):
+    def __init__(self, db_file, logger):
         self._todo_queue = SimpleTaskQueue(logger)
         self._in_process = OpenTasks(logger)
         self._done = collections.OrderedDict()

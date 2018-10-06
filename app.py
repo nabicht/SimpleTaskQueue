@@ -16,8 +16,8 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 from flask import Flask
 from flask import render_template
-from simple_task_server import TaskManager
-from simple_task_server import Task
+from simple_task_manager import TaskManager
+from simple_task_objects import Task
 from flask_restful import Resource, Api
 from flask_restful import reqparse
 from datetime import datetime
@@ -231,7 +231,7 @@ class MonitorTasks(Resource):
         return {"data": list_of_tasks}, 200
 
 
-def create_app():
+def create_app(db_file):
     errors = {
         'UnknownDependencyException': {
             'message': "One or more specified dependent_on Task IDs are unknown by the server. Task not added!",
@@ -248,7 +248,7 @@ def create_app():
     log_file_name = util.time_stamped_file_name("stq")
     logger = util.basic_logger(log_file_name=log_file_name, file_level=logging.DEBUG, console_level=logging.DEBUG)
 
-    task_manager = TaskManager(logger)
+    task_manager = TaskManager(db_file, logger)
 
     api.add_resource(TaskManagement, '/task', resource_class_kwargs={'logger': logger, 'task_manager': task_manager, 'task_id_creator': task_id_creator})
     api.add_resource(AttemptManagement, '/attempt', resource_class_kwargs={'logger': logger, 'task_manager': task_manager})
@@ -269,8 +269,10 @@ if __name__ == '__main__':
     parser.add_argument("-port", action="store", dest="port", type=int, nargs=1,
                         default=[5000], required=False,
                         help="The port. Defaults to 5000")
+    parser.add_argument("-dbfile", action="store", dest="dbfile", nargs=1, default=["stq_persistence.db"],
+                        required=False, help="The file that all persistence is in. Defaults to 'stq_persistence.db'")
     cmd_args = parser.parse_args()
-    app = create_app()
+    app = create_app(cmd_args.dbfile[0])
     app.run(host=cmd_args.host[0], port=cmd_args.port[0], threaded=False)
 
 
