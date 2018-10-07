@@ -26,10 +26,11 @@ import collections
 
 class Task(object):
 
-    def __init__(self, task_id, command, create_time, name="", desc="", duration=None, max_attempts=1, dependent_on=None):
+    def __init__(self, task_id, command, create_time, queue, name="", desc="", duration=None, max_attempts=1, dependent_on=None):
         self.__task_id = task_id
         self.cmd = command
         self.name = name
+        self.queue = queue
         self.desc = desc
         self.duration = duration
         self.max_attempts = max_attempts
@@ -53,36 +54,38 @@ class Task(object):
 
 
 class TaskAttempt:
-    COMPLETED = 30
-    FAILED = 40
 
-    def __init__(self, runner, time_stamp):
-        self._attempt_id = uuid.uuid1().hex  # to avoid the whole json serialization of a UUID, i'm just going straight to hex
+    DEFAULT_STATUS = 0
+    COMPLETED_STATUS = 50
+    FAILED_STATUS = 100
+
+    def __init__(self, attempt_id, start_time, runner, done_time, status, fail_reason):
+        self._attempt_id = attempt_id
         self.runner = runner
-        self.start_time = time_stamp
-        self._fail_reason = None
-        self.completed_time = None
-        self._status = 0
+        self.start_time = start_time
+        self._fail_reason = fail_reason
+        self.completed_time = done_time  # TODO change this to done_time and keep track fo time for failed as well
+        self._status = status
 
     def id(self):
         return self._attempt_id
 
     def mark_failed(self, reason):
         self._fail_reason = reason
-        self._status = TaskAttempt.FAILED
+        self._status = TaskAttempt.FAILED_STATUS
 
     def mark_completed(self, time_stamp):
-        self._status = TaskAttempt.COMPLETED
+        self._status = TaskAttempt.COMPLETED_STATUS
         self.completed_time = time_stamp
 
     def is_failed(self):
-        return self._status == TaskAttempt.FAILED
+        return self._status == TaskAttempt.FAILED_STATUS
 
     def is_completed(self):
-        return self._status == TaskAttempt.COMPLETED
+        return self._status == TaskAttempt.COMPLETED_STATUS
 
     def is_in_process(self):
-        return self._status < TaskAttempt.COMPLETED
+        return self._status < TaskAttempt.COMPLETED_STATUS
 
     def __hash__(self):
         return self._attempt_id
