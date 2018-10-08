@@ -53,15 +53,17 @@ class Task(object):
                 'dependent_on': self.dependent_on}
 
 
+# TODO this should really be immutable. Maybe better as a named tuple
 class TaskAttempt:
 
     DEFAULT_STATUS = 0
     COMPLETED_STATUS = 50
     FAILED_STATUS = 100
 
-    def __init__(self, attempt_id, start_time, runner, done_time, status, fail_reason):
+    def __init__(self, attempt_id, task_id, start_time, runner, done_time, status, fail_reason):
         self._attempt_id = attempt_id
         self.runner = runner
+        self.task_id = task_id
         self.start_time = start_time
         self._fail_reason = fail_reason
         self.completed_time = done_time  # TODO change this to done_time and keep track fo time for failed as well
