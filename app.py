@@ -17,7 +17,6 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 from flask import Flask
 from flask import render_template
 from simple_task_manager import TaskManager
-from simple_task_objects import Task
 from flask_restful import Resource, Api
 from flask_restful import reqparse
 from datetime import datetime
@@ -45,7 +44,6 @@ class TaskManagement(Resource):
 
     def __init__(self, **kwargs):
         self._logger = kwargs.get("logger")
-        self._task_id_creator = kwargs.get("task_id_creator")
         self._task_manager = kwargs.get("task_manager")
         self._task_post_parser = reqparse.RequestParser()
         self._task_post_parser.add_argument('command', dest='command', required=True,
@@ -67,15 +65,13 @@ class TaskManagement(Resource):
     def post(self):
         args = self._task_post_parser.parse_args()
         self._logger.info("TaskManagement.post: %s" % str(args))
-        task = Task(self._task_id_creator.id(),
-                    args.command,
-                    datetime.now(),
-                    name=args.name if args.name is not None else "",
-                    desc=args.description if args.description is not None else "",
-                    duration=args.duration,
-                    max_attempts=args.max_attempts if args.max_attempts is not None else 1,
-                    dependent_on=args.dependent_on)
-        self._task_manager.add_task(task)
+        task = self._task_manager.add_task(args.command,
+                                           datetime.now(),
+                                           name=args.name if args.name is not None else "",
+                                           desc=args.description if args.description is not None else "",
+                                           duration=args.duration,
+                                           max_attempts=args.max_attempts if args.max_attempts is not None else 1,
+                                           dependent_on=args.dependent_on)
         return task.to_json(), 201
 
     def delete(self):
@@ -243,14 +239,12 @@ def create_app(db_file):
     Bootstrap(app)
     api = Api(app, catch_all_404s=True, errors=errors)
 
-    task_id_creator = TaskIDCreator()
-
     log_file_name = util.time_stamped_file_name("stq")
     logger = util.basic_logger(log_file_name=log_file_name, file_level=logging.DEBUG, console_level=logging.DEBUG)
 
     task_manager = TaskManager(db_file, logger)
 
-    api.add_resource(TaskManagement, '/task', resource_class_kwargs={'logger': logger, 'task_manager': task_manager, 'task_id_creator': task_id_creator})
+    api.add_resource(TaskManagement, '/task', resource_class_kwargs={'logger': logger, 'task_manager': task_manager})
     api.add_resource(AttemptManagement, '/attempt', resource_class_kwargs={'logger': logger, 'task_manager': task_manager})
     api.add_resource(MonitorTasks, '/listtasks/<list_type>', resource_class_kwargs={'logger': logger, "task_manager": task_manager})
 
