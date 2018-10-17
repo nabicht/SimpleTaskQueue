@@ -21,21 +21,41 @@ import uuid
 import collections
 
 # Task states are either to be done or complete
-# TaskAttempt states are in is_started, confirmed, in-process, completed, failed
+# TaskAttempt states are in to do, in-process, completed, failed
 
 
 class Task(object):
 
-    def __init__(self, task_id, command, create_time, queue, name="", desc="", duration=None, max_attempts=1, dependent_on=None):
+    STATE_TODO = 0
+    STATE_INPROCESS = 50
+    STATE_COMPLETED = 100
+    STATE_FAILED = 200
+
+    def __init__(self, task_id, command, create_time, state, name="", desc="", duration=None, max_attempts=1, dependent_on=None):
         self.__task_id = task_id
         self.cmd = command
         self.name = name
-        self.queue = queue
+        self._state = state
         self.desc = desc
         self.duration = duration
         self.max_attempts = max_attempts
         self.created_time = create_time
         self.dependent_on = dependent_on if dependent_on is not None else []
+
+    def is_done(self):
+        return self._state >= Task.STATE_COMPLETED
+
+    def is_todo(self):
+        return self._state == Task.STATE_TODO
+
+    def is_in_process(self):
+        return self._state == Task.STATE_INPROCESS
+
+    def has_completed(self):
+        return self._state == Task.STATE_COMPLETED
+
+    def has_failed(self):
+        return self._state == Task.STATE_FAILED
 
     def task_id(self):
         return self.__task_id

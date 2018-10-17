@@ -185,9 +185,25 @@ class SQLitePersistence:
     def _row_to_task(self, row):
         task_id = row['task_id']
         dependent_on = self.get_dependent_on(task_id)
+        queue = row['queue']
+        status = None
+        if queue == SQLitePersistence.TODO_QUEUE:
+            status = Task.STATE_TODO
+        elif queue == SQLitePersistence.IN_PROCESS_QUEUE:
+            status = Task.STATE_INPROCESS
+        elif queue == SQLitePersistence.DONE_QUEUE:
+            # if done and completed then completed if done and not completed, then failed
+            if self.is_task_completed(task_id):
+                status = Task.STATE_COMPLETED
+            else:
+                status = Task.STATE_FAILED
+
+        if status is None:
+            raise Exception("Could not determine status of Task %s" % str(task_id))
+
         name = "" if row["name"] is None else row["name"]
         desc = "" if row["description"] is None else row["description"]
-        task = Task(task_id, row['cmd'], row['created_time'], row['queue'], name=name, desc=desc, duration=row["duration"],
+        task = Task(task_id, row['cmd'], row['created_time'], status, name=name, desc=desc, duration=row["duration"],
                     max_attempts=row['max_attempts'], dependent_on=dependent_on)
         return task
 
