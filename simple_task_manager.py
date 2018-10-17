@@ -382,3 +382,12 @@ class TaskManager(object):
 
     def dependencies(self, task_id):
         return self._persistence.get_dependents(task_id)
+
+    def close(self):
+        """
+        Closes the TaskManager instance. Doing any necessary cleanup.
+        :return:
+        """
+        self._logger.info("Closing SimpleTaskManager.")
+        self._persistence.close()
+        self._logger.info("SimpleTaskManager closed.")

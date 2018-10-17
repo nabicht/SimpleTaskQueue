@@ -95,6 +95,17 @@ class SQLitePersistence:
                                        isolation_level=None)
         self._reader.execute('pragma journal_mode=wal;')
 
+    def close(self):
+        """
+        Close the database connection.
+        :return:
+        """
+        # TODO should probably have some error catching and appropriate logging
+        self._writer.close()
+        self._logger.info("The writer connection to the SQLite3 database is closed.")
+        self._reader.close()
+        self._logger.info("The reader connection to the SQLite3 database is closed.")
+
     @staticmethod
     def _table_exists(db_conn, table_name):
         exists = False
