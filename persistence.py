@@ -1,3 +1,18 @@
+"""
+Copyright 2019 Peter F Nabicht, Big Shoulders Software
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+ documentation files (the "Software"), to deal in the Software without restriction, including without
+ limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ the Software, and to permit persons to whom the Software is furnished to do so, subject to the following
+ conditions:
+The above copyright notice and this permission notice shall be included in all copies or substantial portions
+ of the Software.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
+ TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+ THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+ CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+ DEALINGS IN THE SOFTWARE.
+"""
 
 from simple_task_objects import Task
 from simple_task_objects import TaskAttempt
@@ -28,9 +43,9 @@ class SQLitePersistence:
                        attempt_id integer PRIMARY KEY,
                        task_id integer,
                        runner text NOT NULL,
-                       start_time time_stamp NOT NULL,
+                       start_time timestamp NOT NULL,
                        fail_reason text,
-                       done_time time_stamp,
+                       done_time timestamp,
                        status int);
                     """
 
@@ -86,14 +101,17 @@ class SQLitePersistence:
     def __init__(self, db_file, logger):
         self._db_file = db_file
         self._logger = logger
-        self._setup_tables()
+
         self._writer = sqlite3.connect(db_file, detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES,
                                        isolation_level=None)
         self._writer.execute('pragma journal_mode=wal;')
 
+        self._setup_tables(self._writer)
+
         self._reader = sqlite3.connect(db_file, detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES,
                                        isolation_level=None)
         self._reader.execute('pragma journal_mode=wal;')
+        self._reader.row_factory = sqlite3.Row
 
     def close(self):
         """
@@ -113,9 +131,8 @@ class SQLitePersistence:
             exists = True
         return exists
 
-    def _setup_tables(self):
+    def _setup_tables(self, conn):
         self._logger.debug("Setting up table `tasks`")
-        conn = sqlite3.connect(self._db_file, detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
 
         if self._table_exists(conn, "tasks"):
             self._logger.debug("Table `tasks` already exists. Not setting up.")
@@ -134,8 +151,7 @@ class SQLitePersistence:
         else:
             self._logger.info("Creating Table `attempts`")
             conn.execute(self.ATTEMPT_TABLE)
-        conn.close()
-        
+
     def get_dependent_on(self, task_id):
         """
         Returns a list of task ids where each task id is for a task that the past in task_id's task is dependent on.
@@ -143,7 +159,7 @@ class SQLitePersistence:
         :return: list of ints where each int is a task id
         """
         cursor = self._reader.cursor()
-        cursor.execute(self.GET_DEPENDENT_ON, task_id)
+        cursor.execute(self.GET_DEPENDENT_ON, (task_id,))
         rows = cursor.fetchall()
         cursor.close()
         dependent_on = []
@@ -238,8 +254,9 @@ class SQLitePersistence:
         try:
             cursor.execute(self.INSERT_TASK, (command, desc, name, max_attempts, duration, created_time, queue))
             task_id = cursor.lastrowid
-            for dependent_on_task_id in dependent_on:
-                cursor.execute(self.INSERT_DEPENDENT_ON, (task_id, dependent_on_task_id))
+            if dependent_on is not None:
+                for dependent_on_task_id in dependent_on:
+                    cursor.execute(self.INSERT_DEPENDENT_ON, (task_id, dependent_on_task_id))
             cursor.close()
         except:
             self._writer.rollback()  # Roll back all changes if an exception occurs.
