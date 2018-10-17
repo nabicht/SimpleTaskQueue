@@ -219,7 +219,12 @@ class TaskManager(object):
                 self._logger.error("Could not get attempt for attempt_id %s" % str(attempt_id))
         else:
             self._logger.info("TaskManager.start_next_attempt: No next task to attempt. Returning None for next task and None for attempt.")
-        return next_task, attempt
+        # refresh task before returning to make sure that all state changes from above are captures
+        if next_task is not None:
+            return_task = self.get_task(next_task.task_id())
+        else:
+            return_task = None
+        return return_task, attempt
 
     def _find_task(self, task_id, todo=False, in_process=False, done=False):
         self._logger.debug("TaskManager._find_task: Looking for Task %s in todo = %s, is_in_process = %s, done = %s" %
