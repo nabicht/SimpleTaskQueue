@@ -313,6 +313,16 @@ class SQLitePersistence:
             attempt = self._row_to_attempt(attempt_row)
         return attempt
 
+    def get_attempts(self, task_id):
+        attempts = []
+        cursor = self._reader.cursor()
+        cursor.execute(self.GET_ATTEMPTS_FOR_TASK, (task_id,))
+        attempt_rows = cursor.fetchall()
+        cursor.close()
+        for attempt_row in attempt_rows:
+            attempts.append(self._row_to_attempt(attempt_row))
+        return attempts
+
     def get_most_recent_attempt(self, task_id):
         attempt = None
         cursor = self._reader.cursor()
