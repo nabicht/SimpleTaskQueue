@@ -18,6 +18,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 """
 
 import collections
+from persistence import SQLitePersistence
 
 
 # Custom Exceptions
@@ -36,12 +37,6 @@ class TaskQueue(object):
     def task(self, task_id):
         raise NotImplementedError
 
-    def add_task(self, task):
-        raise NotImplementedError
-
-    def remove_task(self, task_id):
-        raise NotImplementedError
-
     def task_ids(self):
         raise NotImplementedError
 
@@ -52,25 +47,14 @@ class TaskQueue(object):
         raise NotImplementedError
 
 
-class SimpleTaskQueue(TaskQueue):
+class TodoQueue(TaskQueue):
 
-    def __init__(self, logger):
+    def __init__(self, persistence, logger):
         TaskQueue.__init__(self, logger)
-        self._queue = collections.OrderedDict()
+        self._persistence = persistence
 
     def next_task(self, skip_task_ids=None):
-        task_to_send_back = None
-        try:
-            values = self._queue.itervalues()
-        except AttributeError:
-            values = self._queue.values()
-        for task in values:
-            if skip_task_ids is not None and task.task_id() in skip_task_ids:
-                self._logger.debug("SimpleTaskQueue.next_task: Task %s is in skip_task_ids so skipping it." % str(task.task_id()))
-                continue
-            else:
-                task_to_send_back = task
-                break
+        task_to_send_back = self._persistence.next_task(SQLitePersistence.TODO_QUEUE, skip_task_ids)
         if task_to_send_back is None:
             self._logger.debug("SimpleTaskQueue.next_task: No next task to return.")
         else:
@@ -78,26 +62,16 @@ class SimpleTaskQueue(TaskQueue):
         return task_to_send_back
 
     def task(self, task_id):
-        return self._queue.get(task_id)
-
-    def add_task(self, task):
-        self._queue[task.task_id()] = task
-
-    def remove_task(self, task_id):
-        if task_id in self._queue:
-            del self._queue[task_id]
-            self._logger.debug("SimpleTaskQueue.remove_task: removing Task %s." % str(task_id))
-        else:
-            self._logger.debug("SimpleTaskQueue.remove_task: Task %s cannot be removed; not in queue." % str(task_id))
+        return self._persistence.get_task(task_id, queue=SQLitePersistence.TODO_QUEUE)
 
     def task_ids(self):
-        return self._queue.keys()
+        return self._persistence.get_task_ids(SQLitePersistence.TODO_QUEUE)
 
     def all_tasks(self):
-        return self._queue.values()
+        return self._persistence.get_tasks(SQLitePersistence.TODO_QUEUE)
 
     def __len__(self):
-        return len(self._queue)
+        return self._persistence.get_task_count(SQLitePersistence.TODO_QUEUE)
 
 
 class OpenTasks(object):
@@ -113,13 +87,9 @@ class OpenTasks(object):
     tasks that have an expected duration associated are being kept separate from those without a duration.
     """
 
-    def __init__(self, logger):
+    def __init__(self, persistence, logger):
         self._logger = logger
-        # two main containers:
-        #  1) tasks with a duration
-        #  2) tasks without a duration
-        self._durations = collections.OrderedDict()
-        self._no_durations = collections.OrderedDict()
+        self._persistence = persistence
 
     def task_to_retry(self, current_time):
         """
@@ -141,38 +111,40 @@ class OpenTasks(object):
         #  so we need to get the first one to be redone from each dict and then take the oldest of those two
         failed_tasks = []
         no_duration = None
-        try:
-            no_duration_values = self._no_durations.itervalues()
-        except AttributeError:
-            no_duration_values = self._no_durations.values()
-        for task in no_duration_values:
-            if task.most_recent_attempt().is_failed():
-                if task.num_attempts() >= task.max_attempts:
+        no_duration_tasks = self._persistence.get_tasks_with_duration_filter(SQLitePersistence.IN_PROCESS_QUEUE, False)
+        for task in no_duration_tasks:
+            most_recent_attempt = self._persistence.get_most_recent_attempt(task.task_id())
+            if most_recent_attempt is not None and most_recent_attempt.is_failed():
+                attempt_count = self._persistence.get_attempt_count()
+                if attempt_count >= task.max_attempts:
                     self._logger.debug("OpenTasks.task_to_retry: Task %s has failed attempt %d of %d. Treating it as failed." %
-                                       (str(task.task_id()), task.num_attempts(), task.max_attempts))
+                                       (str(task.task_id()), attempt_count, task.max_attempts))
                     failed_tasks.append(task)
                 else:
                     self._logger.debug("OpenTasks.task_to_retry: Task %s has failed attempt %d of %d. Should be retried." %
-                                       (str(task.task_id()), task.num_attempts(), task.max_attempts))
+                                       (str(task.task_id()), attempt_count, task.max_attempts))
                     no_duration = task
                     break
 
         with_duration = None
-        try:
-            duration_values = self._durations.itervalues()
-        except AttributeError:
-            duration_values = self._durations.values()
-        for task in duration_values:
-            failed = task.most_recent_attempt().is_failed()
-            timed_out = (current_time - task.most_recent_attempt().start_time).total_seconds() > task.duration
+        duration_tasks = self._persistence.get_tasks_with_duration_filter(SQLitePersistence.IN_PROCESS_QUEUE, True)
+        for task in duration_tasks:
+            most_recent_attempt = self._persistence.get_most_recent_attempt(task.task_id())
+            failed = False
+            timed_out = False
+            if most_recent_attempt is not None:
+                failed = most_recent_attempt.is_failed()
+                timed_out = (current_time - most_recent_attempt.start_time).total_seconds() > task.duration
             if failed or timed_out:
-                if task.num_attempts() >= task.max_attempts:
+                attempt_count = self._persistence.get_attempt_count()
+                if attempt_count >= task.max_attempts:
                     self._logger.debug("OpenTasks.task_to_retry: Task %s has %s attempt %d of %d. Treating it as failed." %
-                                       (str(task.task_id()), "failed" if failed else "timed out", task.num_attempts(), task.max_attempts))
+                                       (str(task.task_id()), "failed" if failed else "timed out", attempt_count,
+                                        task.max_attempts))
                     failed_tasks.append(task)
                 else:
                     self._logger.debug("OpenTasks.task_to_retry: Task %s has %s attempt %d of %d. Should be retried." %
-                                       (str(task.task_id()), "failed" if failed else "timed out", task.num_attempts(),
+                                       (str(task.task_id()), "failed" if failed else "timed out", attempt_count,
                                         task.max_attempts))
                     with_duration = task
                     break
@@ -194,65 +166,49 @@ class OpenTasks(object):
                                (str(retry_task.task_id()), len(failed_tasks)))
         return retry_task, failed_tasks
 
-    def add_task(self, task):
-        """
-        If the task has an expected duration then add it to durations, otherwise add it to no durations
-        """
-        assert isinstance(task, Task)
-        assert task.most_recent_attempt() is not None, "Cannot add task to OpenTasks because no current attempt"
-        if task.duration is None:
-            self._no_durations[task.task_id()] = task
-            self._logger.debug("OpenTasks.add_task: Task %s added to no durations." % str(task.task_id()))
-        else:
-            self._durations[task.task_id()] = task
-            self._logger.debug("OpenTasks.add_task: Task %s added to durations." % str(task.task_id()))
-
-    def remove_task(self, task_id):
-        """
-        remove the task from OpenTasks. If task doesn't exist in OpenTask then no-op.
-        """
-        if task_id in self._no_durations:
-            del self._no_durations[task_id]
-            self._logger.debug("OpenTasks.remove_task: Task %s removed from no durations." % str(task_id))
-        elif task_id in self._durations:
-            del self._durations[task_id]
-            self._logger.debug("OpenTasks.remove_task: Task %s removed from durations." % str(task_id))
-
     def get_task(self, task_id):
         # the task doesn't exist here then return none
-        task = self._durations.get(task_id)
-        if task is None:
-            task = self._no_durations.get(task_id)
-        return task
+        return self._persistence.get_task(task_id, SQLitePersistence.IN_PROCESS_QUEUE)
 
     def all_tasks(self):
-        tasks = []
-        tasks.extend(self._durations.values())
-        tasks.extend(self._no_durations.values())
-        return sorted(tasks, key=lambda task: task.created_time)
+        return self._persistence.get_tasks(SQLitePersistence.IN_PROCESS_QUEUE, sort_by_created_time=True)
 
     def __len__(self):
-        return len(self._durations) + len(self._no_durations)
+        return self._persistence.get_task_count(SQLitePersistence.IN_PROCESS_QUEUE)
+
+
+"""
+TODO I think we can move all of the above into TaskManager and not keep separate data structures, but 
+ first let's get it working with persistence and then I'll figure it out
+"""
 
 
 class TaskManager(object):
 
     def __init__(self, db_file, logger):
-        self._todo_queue = SimpleTaskQueue(logger)
-        self._in_process = OpenTasks(logger)
+        self._persistence = SQLitePersistence(db_file, logger)
+        self._todo_queue = TodoQueue(self._persistence, logger)
+        self._in_process = OpenTasks(self._persistence, logger)
         self._done = collections.OrderedDict()
         self._logger = logger
 
     def _move_task_to_done(self, task):
         task_id = task.task_id()
-        if self._find_task(task_id, in_process=True) is not None:
-            self._in_process.remove_task(task_id)
-            self._logger.debug("TaskManager._move_task_to_done: Task %s removed from in process tasks." % str(task_id))
-        elif self._find_task(task_id, todo=True) is not None:
-            self._todo_queue.remove_task(task_id)
-            self._logger.debug("TaskManager._move_task_to_done: Task %s removed from todo tasks." % str(task_id))
-        self._done[task.task_id()] = task
-        self._logger.debug("TaskManager._move_task_to_done: Task %s added to done tasks." % str(task_id))
+        self._logger.debug("TaskManager._move_task_to_done: Task %s moving from %s to Done." % (str(task_id), SQLitePersistence.QUEUE_STR[task.queue]))
+        try:
+            self._persistence.update_task_to_done(task.task_id())
+        except:
+            self._logger.warn("TaskManager._move_task_to_done: FAILED to move task %s moved to Done tasks." % str(task_id))
+        else:
+            self._logger.debug("TaskManager._move_task_to_done: Task %s moved to Done tasks." % str(task_id))
+
+    def new_attempt(self, task, runner, time_stamp):
+        attempt_id = None
+        try:
+            attempt_id = self._persistence.new_attempt(task.task_id(), runner, time_stamp)
+        except:
+            self._logger.error("There was a problem creating a new attempt for task %s" % str(task.task_id()))
+        return attempt_id
 
     def start_next_attempt(self, runner, current_time):
         self._logger.debug("TaskManager.start_next_attempt: Starting next attempt for runner %s at %s" % (str(runner), str(current_time)))
@@ -265,42 +221,50 @@ class TaskManager(object):
             self._move_task_to_done(task)
 
         if next_task is not None:
-            attempt = next_task.attempt_task(runner, current_time)
-            self._logger.info("TaskManager.start_next_attempt: Created Attempt %s for Task %s. Attempt %d of %d." %
-                              (str(attempt.id()), str(next_task.task_id()), next_task.num_attempts(), next_task.max_attempts))
+            attempt_id = self._persistence.new_attempt(next_task, runner, current_time)
+            if attempt_id is not None:
+                num_attempts = self._persistence.get_attempt_count(next_task.task_id())
+                self._logger.info("TaskManager.start_next_attempt: Created Attempt %s for Task %s. Attempt %d of %d." %
+                                  (str(attempt.id()), str(next_task.task_id()), num_attempts, next_task.max_attempts))
         else:  # if still no next task, get one from the queued up new tasks
-            skip_task_ids = set()
-            todo_ids = self._todo_queue.task_ids()
-            # as long as not every task_id in todo_queue is in skip_tasks, we keep trying
-            while not skip_task_ids.issuperset(todo_ids):
-                possible_next_task = self._todo_queue.next_task(skip_task_ids=skip_task_ids)
-                # if any dependency is not done, then we need to continue
+            todo_ids = self._persistence.get_task_ids(SQLitePersistence.TODO_QUEUE)
+            for todo_id in todo_ids:
+                # if all dependencies are complete then run it, else, continue
+                dependent_on_task_ids = self._persistence.get_dependent_on(todo_id)
                 can_run = True
-                for dependency in possible_next_task.dependent_on:
-                    dependency_task = self._find_task(dependency, todo=True, in_process=True, done=True)
-                    if not dependency_task.is_completed():
-                        self._logger.debug("TaskManager.start_next_attempt: Task %s is dependent on Task %s, which is not completed. Skipping it for now." %
-                                           (str(possible_next_task.task_id()), str(dependency)))
-                        skip_task_ids.add(possible_next_task.task_id())
+                for dependent_on_task_id in dependent_on_task_ids:
+                    if not self._persistence.is_task_completed(dependent_on_task_id):
+                        self._logger.debug(
+                            "TaskManager.start_next_attempt: Task %s is dependent on Task %s, which is not completed. Skipping it for now." %
+                            (str(todo_id), str(dependent_on_task_id)))
                         can_run = False
                         break
-                if can_run:  # if it can run then all dependencies are completed (or there are no dependencies) so break the while loop, we've found our next task
-                    next_task = possible_next_task
+                if can_run: # if it can run then all dependencies are completed (or there are no dependencies) we've found our next task
+                    next_task = self._persistence.get_task(todo_id)
                     break
 
-            # and move this task from something to do to in process & create attempt
+            # if there is a next_task we need to create an attempt and move to task to inprocess
             if next_task is not None:
-                self._logger.debug("TaskManager.start_next_attempt: Task %s is being moved from todo to in process." % str(next_task.task_id()))
-                self._todo_queue.remove_task(next_task.task_id())
-                attempt = next_task.attempt_task(runner, current_time)
-                self._in_process.add_task(next_task)
+                attempt_id = self._persistence.new_attempt(next_task, runner, current_time)
+                num_attempts = self._persistence.get_attempt_count(next_task.task_id())
                 self._logger.info("TaskManager.start_next_attempt: Created Attempt %s for Task %s. Attempt %d of %d." %
-                                  (str(attempt.id()), str(next_task.task_id()), next_task.num_attempts(),
-                                   next_task.max_attempts))
-        if attempt is not None:
-            self._logger.info("TaskManager.start_next_attempt: Next attempt is Attempt %s for Task %s. Attempt %d of %d." %
-                              (str(attempt.id()), str(next_task.task_id()), next_task.num_attempts(),
-                               next_task.max_attempts))
+                                  (str(attempt_id), str(next_task.task_id()), num_attempts, next_task.max_attempts))
+                try:
+                    self._persistence.update_task_to_inprocess(next_task.task_id())
+                    self._logger.debug("TaskManager.start_next_attempt: Task %s is being moved from todo to in process." %
+                                       str(next_task.task_id()))
+                except:
+                    self._logger.error("TaskManager.start_next_attempt: Task %s could not be moved from todo to in process" %
+                                       str(next_task.task_id()))
+
+        if attempt_id is not None:
+            attempt = self._persistence.get_attempt(attempt_id)
+            if attempt is not None:
+                num_attempts = self._persistence.get_attempt_count(next_task.task_id())
+                self._logger.info("TaskManager.start_next_attempt: Next attempt is Attempt %s for Task %s. Attempt %d of %d." %
+                                  (str(attempt.id()), str(next_task.task_id()), num_attempts, next_task.max_attempts))
+            else:
+                self._logger.error("Could not get attempt for attempt_id %s" % str(attempt_id))
         else:
             self._logger.info("TaskManager.start_next_attempt: No next task to attempt. Returning None for next task and None for attempt.")
         return next_task, attempt
@@ -310,90 +274,111 @@ class TaskManager(object):
                            (str(task_id), str(todo), str(in_process), str(done)))
         task = None
         if task is None and todo:
-            task = self._todo_queue.task(task_id)
+            task = self._persistence.get_task(task_id, queue=SQLitePersistence.TODO_QUEUE)
             if task is not None:
                 self._logger.debug("TaskManager._find_task: Task %s found in todo." % str(task_id))
         if task is None and in_process:
-            task = self._in_process.get_task(task_id)
+            task = self._persistence.get_task(task_id, queue=SQLitePersistence.IN_PROCESS_QUEUE)
             if task is not None:
                 self._logger.debug("TaskManager._find_task: Task %s found in is_in_process." % str(task_id))
         if task is None and done:
-            task = self._done.get(task_id)
+            task = self._persistence.get_task(task_id, queue=SQLitePersistence.DONE_QUEUE)
             if task is not None:
                 self._logger.debug("TaskManager._find_task: Task %s found in done." % str(task_id))
         return task
 
-    def fail_attempt(self, task_id, attempt_id, fail_reason):
-        # need to fail the attempt
-        # first find the task, should be in in process or done
-        task = self._find_task(task_id, in_process=True, done=True)
-        if task is not None:
-            # fail the attempt
-            task.get_attempt(attempt_id).mark_failed(fail_reason)
-            self._logger.info("TaskManager.fail_attempt: failed Attempt %s for Task %s." % (str(attempt_id), str(task_id)))
-            # if attempts is > max attempts and the attempt that failed is the most recent one then move it to done
-            if task.num_attempts() >= task.max_attempts and task.most_recent_attempt().id() == attempt_id:
-                self._move_task_to_done(task)
-                self._logger.info("TaskManager.fail_attempt: Task %s Attempt %s is last attempt failed. Moved to done" %
-                                  (str(task_id), str(attempt_id)))
+    def fail_attempt(self, task_id, attempt_id, fail_reason, time_stamp):
+        # first get the attempt
+        attempt = self._persistence.get_attempt(attempt_id)
+        # if the attempt is None we have a problem
+        if attempt is None:
+            self._logger.error("TaskManager.fail_attempt: Tried to fail attempt id %s but no attempt for that id." % str(attempt_id))
+
+        # if the attempt's task_id does not match passed in task_id we have a problem
+        elif attempt.task_id != task_id:
+            self._logger.error("TaskManager.fail_attempt: Tried to fail attempt id %s for task %s but the attempt is actually for task %s" %
+                               (str(attempt_id), str(task_id), str(attempt.task_id)))
+
+        # otherwise, process the fail
         else:
-            self._logger.warn("TaskManager.fail_attempt: Task %s not found in is_in_process or done. Can't fail task not in one of these sets." % str(task_id))
+            # fail the attempt
+            self._persistence.update_attempt_to_fail(attempt_id, fail_reason, time_stamp)
+            # fail the task
+            task = self._persistence.get_task(task_id)
+            if task is None:
+                self._logger.info("Failing attempt %s for task %s but task no longer exists" % (str(attempt_id), str(task_id)))
+            else:
+                # if number of attempts >= task's max attempts then move task to done
+                num_attempts = self._persistence.get_attempt_count(task_id)
+                self._logger.info("TaskManager.fail_attempt: failed Attempt %s for Task %s." % (str(attempt_id), str(task_id)))
+                if num_attempts >= task.max_attempts:
+                    self._persistence.update_task_to_done(task_id)
+                    self._logger.info("TaskManager.fail_attempt: Task %s Attempt %s is last attempt failed. Moved to done" %
+                                      (str(task_id), str(attempt_id)))
+                return True
+        return False
 
     def complete_attempt(self, task_id, attempt_id, time_stamp):
-        task = self._find_task(task_id, in_process=True, done=True)
-        if task is not None:
-            task.get_attempt(attempt_id).mark_completed(time_stamp)
-            self._logger.info("TaskManager.complete_attempt: completed Attempt %s for Task %s." % (str(attempt_id), str(task_id)))
-            if self._find_task(task_id, in_process=True):
-                self._move_task_to_done(task)
-                return True
-        else:
-            self._logger.warn("TaskManager.complete_attempt: Task %s not found in is_in_process or done. Can't complete task not in one of these sets." % str(task_id))
-            return False
+        # first get the attempt
+        attempt = self._persistence.get_attempt(attempt_id)
+        # if the attempt is None we have a problem
+        if attempt is None:
+            self._logger.error("TaskManager.complete_attempt: Tried to complete attempt id %s but no attempt for that id." % str(attempt_id))
 
-    def add_task(self, task):
-        assert isinstance(task, Task)
+        # if the attempt's task_id does not match passed in task_id we have a problem
+        elif attempt.task_id != task_id:
+            self._logger.error("TaskManager.complete_attempt: Tried to complete attempt id %s for task %s but the attempt is actually for task %s" %
+                               (str(attempt_id), str(task_id), str(attempt.task_id)))
+
+        # otherwise, process the complete
+        else:
+            # complete the attempt
+            self._persistence.update_attempt_to_complete(attempt_id, time_stamp)
+            self._logger.info("TaskManager.complete_attempt: completed Attempt %s for Task %s." % (str(attempt_id), str(task_id)))
+            # move task to done
+            self._persistence.update_task_to_done(task_id)
+            return True
+        return False
+
+    def add_task(self, command, create_time, name="", desc="", duration=None, max_attempts=1, dependent_on=None):
         # all tasks dependent_on must exist
-        for task_id in task.dependent_on:
-            if self._find_task(task_id, todo=True, in_process=True, done=True) is None:
-                raise UnknownDependencyException()
-        self._todo_queue.add_task(task)
-        self._logger.info("TaskManager.add_task: Added Task %s to todo." % str(task.task_id()))
+        if dependent_on is not None:
+            for dependent_on_task_id in dependent_on:
+                if self._find_task(dependent_on_task_id, todo=True, in_process=True, done=True) is None:
+                    raise UnknownDependencyException()
+        task_id = self._persistence.add_task(command, create_time, name, desc, duration, max_attempts, dependent_on)
+        self._logger.info("TaskManager.add_task: Added Task %s to todo." % str(task_id))
+        return self._persistence.get_task(task_id)
 
     def delete_task(self, task_id):
+        # IF DELETING TASKS IT MAKES SENSE TO DELETE ATTEMPTS TOO
+        # if there is a task that is a non-done task is dependent on then cannot delete it.
         deleted = False
-        if self._find_task(task_id, todo=True) is not None:
-            self._todo_queue.remove_task(task_id)
-            self._logger.info("TaskManager.delete_task: Task %s deleted from todo" % str(task_id))
-            deleted = True
-        elif self._find_task(task_id, done=True) is not None:
-            del self._done[task_id]
-            self._logger.info("TaskManager.delete_task: Task %s deleted from done" % str(task_id))
-            deleted = True
-        elif self._find_task(task_id, in_process=True) is not None:
-            self._in_process.remove_task(task_id)
-            self._logger.info("TaskManager.delete_task: Task %s deleted from inprocess" % str(task_id))
-            deleted = True
-        else:
-            self._logger.info("TaskManager.delete_task: Task %s not found so not deleted." % str(task_id))
+        can_delete = True
+        dependent_task_ids = self._persistence.get_dependents(task_id)
+        for dependent_task_id in dependent_task_ids:
+            if not self._persistence.is_task_done(task_id):
+                self._logger.info("Cannot delete task %s because Task %s is dependent on it and is not done yet." % (str(task_id), str(dependent_task_id)))
+                can_delete = False
+                break
+        if can_delete:
+            try:
+                self._persistence.delete_task(task_id)
+                self._logger.info("Task %s and all of its attempts have been deleted")
+                deleted = True
+            except:
+                self._logger.error("Could not delete Task %s.")
+
         return deleted
 
     def done_tasks(self):
-        return self._done.values()
+        return self._persistence.get_tasks(SQLitePersistence.DONE_QUEUE)
 
     def todo_tasks(self):
-        return self._todo_queue.all_tasks()
+        return self._persistence.get_tasks(SQLitePersistence.TODO_QUEUE)
 
     def in_process_tasks(self):
-        return self._in_process.all_tasks()
+        return self._persistence.get_tasks(SQLitePersistence.IN_PROCESS_QUEUE)
 
     def dependencies(self, task_id):
-        dependencies = []
-        tasks = []
-        tasks.extend(self.todo_tasks())
-        tasks.extend(self.in_process_tasks())
-        tasks.extend(self.done_tasks())
-        for task in tasks:
-            if task_id in task.dependent_on:
-                dependencies.append(task_id)
-        return dependencies
+        return self._persistence.get_dependents(task_id)
