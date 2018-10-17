@@ -26,54 +26,6 @@ class UnknownDependencyException(Exception):
     pass
 
 
-class TaskQueue(object):
-
-    def __init__(self, logger):
-        self._logger = logger
-
-    def next_task(self, skip_task_ids=None):
-        raise NotImplementedError
-
-    def task(self, task_id):
-        raise NotImplementedError
-
-    def task_ids(self):
-        raise NotImplementedError
-
-    def all_tasks(self):
-        raise NotImplementedError
-
-    def __len__(self):
-        raise NotImplementedError
-
-
-class TodoQueue(TaskQueue):
-
-    def __init__(self, persistence, logger):
-        TaskQueue.__init__(self, logger)
-        self._persistence = persistence
-
-    def next_task(self, skip_task_ids=None):
-        task_to_send_back = self._persistence.next_task(SQLitePersistence.TODO_QUEUE, skip_task_ids)
-        if task_to_send_back is None:
-            self._logger.debug("SimpleTaskQueue.next_task: No next task to return.")
-        else:
-            self._logger.debug("SimpleTaskQueue.next_task: Task %s is the next task." % str(task_to_send_back.task_id()))
-        return task_to_send_back
-
-    def task(self, task_id):
-        return self._persistence.get_task(task_id, queue=SQLitePersistence.TODO_QUEUE)
-
-    def task_ids(self):
-        return self._persistence.get_task_ids(SQLitePersistence.TODO_QUEUE)
-
-    def all_tasks(self):
-        return self._persistence.get_tasks(SQLitePersistence.TODO_QUEUE)
-
-    def __len__(self):
-        return self._persistence.get_task_count(SQLitePersistence.TODO_QUEUE)
-
-
 class OpenTasks(object):
     """
     When there is an attempt being run, it gets added to the open attempts queue.
@@ -136,7 +88,7 @@ class OpenTasks(object):
                 failed = most_recent_attempt.is_failed()
                 timed_out = (current_time - most_recent_attempt.start_time).total_seconds() > task.duration
             if failed or timed_out:
-                attempt_count = self._persistence.get_attempt_count()
+                attempt_count = self._persistence.get_attempt_count(task.task_id())
                 if attempt_count >= task.max_attempts:
                     self._logger.debug("OpenTasks.task_to_retry: Task %s has %s attempt %d of %d. Treating it as failed." %
                                        (str(task.task_id()), "failed" if failed else "timed out", attempt_count,
@@ -187,7 +139,6 @@ class TaskManager(object):
 
     def __init__(self, db_file, logger):
         self._persistence = SQLitePersistence(db_file, logger)
-        self._todo_queue = TodoQueue(self._persistence, logger)
         self._in_process = OpenTasks(self._persistence, logger)
         self._done = collections.OrderedDict()
         self._logger = logger
@@ -202,16 +153,17 @@ class TaskManager(object):
         else:
             self._logger.debug("TaskManager._move_task_to_done: Task %s moved to Done tasks." % str(task_id))
 
-    def new_attempt(self, task, runner, time_stamp):
+    def _attempt_task(self, task, runner, time_stamp):
         attempt_id = None
         try:
             attempt_id = self._persistence.new_attempt(task.task_id(), runner, time_stamp)
         except:
-            self._logger.error("There was a problem creating a new attempt for task %s" % str(task.task_id()))
+            self._logger.error("TaskManager._attempt_task: There was a problem creating a new attempt for task %s" % str(task.task_id()))
         return attempt_id
 
     def start_next_attempt(self, runner, current_time):
         self._logger.debug("TaskManager.start_next_attempt: Starting next attempt for runner %s at %s" % (str(runner), str(current_time)))
+        attempt_id = None
         attempt = None
         # if there is one in process that needs to be re-attempted then do that
         next_task, failed_tasks = self._in_process.task_to_retry(current_time)
@@ -221,7 +173,7 @@ class TaskManager(object):
             self._move_task_to_done(task)
 
         if next_task is not None:
-            attempt_id = self._persistence.new_attempt(next_task, runner, current_time)
+            attempt_id = self._attempt_task(next_task, runner, current_time)
             if attempt_id is not None:
                 num_attempts = self._persistence.get_attempt_count(next_task.task_id())
                 self._logger.info("TaskManager.start_next_attempt: Created Attempt %s for Task %s. Attempt %d of %d." %
@@ -245,7 +197,7 @@ class TaskManager(object):
 
             # if there is a next_task we need to create an attempt and move to task to inprocess
             if next_task is not None:
-                attempt_id = self._persistence.new_attempt(next_task, runner, current_time)
+                attempt_id = self._attempt_task(next_task, runner, current_time)
                 num_attempts = self._persistence.get_attempt_count(next_task.task_id())
                 self._logger.info("TaskManager.start_next_attempt: Created Attempt %s for Task %s. Attempt %d of %d." %
                                   (str(attempt_id), str(next_task.task_id()), num_attempts, next_task.max_attempts))
@@ -346,7 +298,7 @@ class TaskManager(object):
             for dependent_on_task_id in dependent_on:
                 if self._find_task(dependent_on_task_id, todo=True, in_process=True, done=True) is None:
                     raise UnknownDependencyException()
-        task_id = self._persistence.add_task(command, create_time, name, desc, duration, max_attempts, dependent_on)
+        task_id = self._persistence.add_task(SQLitePersistence.TODO_QUEUE, command, create_time, name, desc, duration, max_attempts, dependent_on)
         self._logger.info("TaskManager.add_task: Added Task %s to todo." % str(task_id))
         return self._persistence.get_task(task_id)
 
@@ -370,6 +322,15 @@ class TaskManager(object):
                 self._logger.error("Could not delete Task %s.")
 
         return deleted
+
+    def get_task(self, task_id):
+        return self._persistence.get_task(task_id)
+
+    def get_task_attempts(self, task_id):
+        return self._persistence.get_attempts(task_id)
+
+    def get_most_recent_attempt(self, task_id):
+        return self._persistence.get_most_recent_attempt(task_id)
 
     def done_tasks(self):
         return self._persistence.get_tasks(SQLitePersistence.DONE_QUEUE)
