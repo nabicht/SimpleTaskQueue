@@ -14,7 +14,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
  DEALINGS IN THE SOFTWARE.
 """
 
-from simple_task_server import Task
+from simple_task_objects import Task
 import logging
 import datetime
 

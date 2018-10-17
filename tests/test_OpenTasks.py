@@ -14,285 +14,94 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
  DEALINGS IN THE SOFTWARE.
 """
 
-from simple_task_server import Task
-from simple_task_server import OpenTasks
+from simple_task_manager import TaskManager
 from datetime import datetime
 import logging
 import pytest
+import tempfile
 
 LOGGER = logging.getLogger(__name__)
 
 
-def test_task_to_retry_none_to_retry():
+@pytest.fixture
+def task_manager():
+    temp = tempfile.NamedTemporaryFile()
+    task_manager = TaskManager(temp.name, LOGGER)
+    yield task_manager
+    task_manager.close()
+    temp.close()
+
+
+def test_task_to_retry_none_to_retry(task_manager):
     time_stamp = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=5, microsecond=100222)
 
-    t1 = Task(1, "run command example", time_stamp, name="example run",
-              desc="this is a bologna command that does nothing", duration=100)
-    start_time_stamp = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=6, microsecond=100222)
-    t1.attempt_task("runner", start_time_stamp)
+    t1 = task_manager.add_task("run command example", time_stamp, name="example run",
+                               desc="this is a bologna command that does nothing", duration=100)
 
-    t2 = Task(2, "run command example 2", time_stamp, name="example run 2",
-              desc="this is a bologna command that does nothing", duration=120)
     start_time_stamp = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=6, microsecond=100222)
-    t2.attempt_task("runner", start_time_stamp)
+    next_task, attempt1 = task_manager.start_next_attempt("runner", start_time_stamp)
+    assert next_task.task_id() == t1.task_id()
 
-    ot = OpenTasks(LOGGER)
-    ot.add_task(t1)
-    ot.add_task(t2)
+    t2 = task_manager.add_task("run command example 2", time_stamp, name="example run 2",
+                               desc="this is a bologna command that does nothing", duration=120)
+    start_time_stamp = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=6, microsecond=100222)
+    next_task, attempt2 = task_manager.start_next_attempt("runner", start_time_stamp)
+    assert next_task.task_id() == t2.task_id()
+
     current_time = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=8, microsecond=100222)
-    task, failed_tasks = ot.task_to_retry(current_time)
+    task, failed_tasks = task_manager._in_process.task_to_retry(current_time)
     # should be no failed tasks
     assert task is None
     assert len(failed_tasks) == 0
 
 
-def test_task_to_retry_first_started_retry():
+def test_task_to_retry_first_started_retry(task_manager):
     time_stamp = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=5, microsecond=100222)
 
-    t1 = Task(1, "run command example", time_stamp, name="example run",
-              desc="this is a bologna command that does nothing", duration=100, max_attempts=3)
+    t1 = task_manager.add_task("run command example", time_stamp, name="example run",
+                               desc="this is a bologna command that does nothing", duration=100, max_attempts=3)
     start_time_stamp = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=6, microsecond=100222)
-    t1.attempt_task("runner", start_time_stamp)
+    t1_a1 = task_manager.start_next_attempt("runner", start_time_stamp)
 
-    t2 = Task(2, "run command example 2", time_stamp, name="example run 2",
-              desc="this is a bologna command that does nothing", duration=820, max_attempts=3)
+    t2 = task_manager.add_task("run command example 2", time_stamp, name="example run 2",
+                               desc="this is a bologna command that does nothing", duration=820, max_attempts=3)
     start_time_stamp = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=6, microsecond=100222)
-    t2.attempt_task("runner", start_time_stamp)
+    t2_a1 = task_manager.start_next_attempt("runner", start_time_stamp)
 
-    ot = OpenTasks(LOGGER)
-    ot.add_task(t1)
-    ot.add_task(t2)
     current_time = datetime(year=2018, month=8, day=13, hour=5, minute=12, second=8, microsecond=100222)
-    task, failed_tasks = ot.task_to_retry(current_time)
+    task, failed_tasks = task_manager._in_process.task_to_retry(current_time)
     # should be no failed tasks
     assert task.task_id() == t1.task_id()
-    assert task == t1
+    assert task.cmd == t1.cmd
+    assert task.name == t1.name
+    assert task.desc == t1.desc
+    assert task.duration == t1.duration
+    assert task.max_attempts == t1.max_attempts
+    assert task.created_time == t1.created_time
     assert len(failed_tasks) == 0
 
 
-def test_task_to_retry_second_started_retry():
+def test_task_to_retry_second_started_retry(task_manager):
     time_stamp = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=5, microsecond=100222)
 
-    t1 = Task(1, "run command example", time_stamp, name="example run",
-              desc="this is a bologna command that does nothing", duration=500, max_attempts=3)
+    t1 = task_manager.add_task("run command example", time_stamp, name="example run",
+                               desc="this is a bologna command that does nothing", duration=500, max_attempts=3)
     start_time_stamp = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=6, microsecond=100222)
-    t1.attempt_task("runner", start_time_stamp)
+    t1_a1 = task_manager.start_next_attempt("runner", start_time_stamp)
 
-    t2 = Task(2, "run command example 2", time_stamp, name="example run 2",
-              desc="this is a bologna command that does nothing", duration=90, max_attempts=3)
+    t2 = task_manager.add_task("run command example 2", time_stamp, name="example run 2",
+                               desc="this is a bologna command that does nothing", duration=90, max_attempts=3)
     start_time_stamp = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=8, microsecond=100222)
-    t2.attempt_task("runner", start_time_stamp)
+    t2_a1 = task_manager.start_next_attempt("runner", start_time_stamp)
 
-    ot = OpenTasks(LOGGER)
-    ot.add_task(t1)
-    ot.add_task(t2)
     current_time = datetime(year=2018, month=8, day=13, hour=5, minute=12, second=8, microsecond=100222)
-    task, failed_tasks = ot.task_to_retry(current_time)
+    task, failed_tasks = task_manager._in_process.task_to_retry(current_time)
     # should be no failed tasks
     assert task.task_id() == t2.task_id()
-    assert task == t2
+    assert task.cmd == t2.cmd
+    assert task.name == t2.name
+    assert task.desc == t2.desc
+    assert task.duration == t2.duration
+    assert task.max_attempts == t2.max_attempts
+    assert task.created_time == t2.created_time
     assert len(failed_tasks) == 0
-
-
-def test_add_task_with_an_attempt():
-    time_stamp = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=5, microsecond=100222)
-
-    t1 = Task(1, "run command example", time_stamp, name="example run",
-              desc="this is a bologna command that does nothing", duration=500, max_attempts=3)
-    start_time_stamp = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=6, microsecond=100222)
-    t1.attempt_task("runner", start_time_stamp)
-    ot = OpenTasks(LOGGER)
-    assert len(ot) == 0
-    ot.add_task(t1)
-    # should be there now
-    assert len(ot) == 1
-    assert ot.get_task(1) == t1
-
-
-def test_add_task_without_an_attempt():
-    time_stamp = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=5, microsecond=100222)
-
-    t1 = Task(1, "run command example", time_stamp, name="example run",
-              desc="this is a bologna command that does nothing", duration=500, max_attempts=3)
-    ot = OpenTasks(LOGGER)
-    assert len(ot) == 0
-    with pytest.raises(AssertionError):
-        ot.add_task(t1)
-    # should be there now
-    assert len(ot) == 0
-    assert ot.get_task(1) is None
-
-
-def test_add_already_added_task():
-    time_stamp = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=5, microsecond=100222)
-
-    t1 = Task(1, "run command example", time_stamp, name="example run",
-              desc="this is a bologna command that does nothing", duration=500, max_attempts=3)
-    start_time_stamp = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=6, microsecond=100222)
-    t1.attempt_task("runner", start_time_stamp)
-    ot = OpenTasks(LOGGER)
-    assert len(ot) == 0
-    ot.add_task(t1)
-    # should be there now
-    assert len(ot) == 1
-    assert ot.get_task(1) == t1
-    ot.add_task(t1)
-    # should be there now
-    assert len(ot) == 1
-    assert ot.get_task(1) == t1
-
-
-def test_remove_task_with_duration():
-    time_stamp = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=5, microsecond=100222)
-
-    t1 = Task(1, "run command example", time_stamp, name="example run",
-              desc="this is a bologna command that does nothing", duration=500, max_attempts=3)
-    start_time_stamp = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=6, microsecond=100222)
-    t1.attempt_task("runner", start_time_stamp)
-
-    t2 = Task(2, "run command example 2", time_stamp, name="example run 2",
-              desc="this is a bologna command that does nothing",  max_attempts=3)
-    start_time_stamp = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=8, microsecond=100222)
-    t2.attempt_task("runner", start_time_stamp)
-    ot = OpenTasks(LOGGER)
-    ot.add_task(t1)
-    ot.add_task(t2)
-    assert len(ot) == 2
-    assert ot.get_task(1) == t1
-    assert ot.get_task(2) == t2
-
-    # remove task with duration
-    ot.remove_task(1)
-    assert len(ot) == 1
-    assert ot.get_task(1) is None
-    assert ot.get_task(2) == t2
-
-
-def test_remove_task_without_duration():
-    time_stamp = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=5, microsecond=100222)
-
-    t1 = Task(1, "run command example", time_stamp, name="example run",
-              desc="this is a bologna command that does nothing", duration=500, max_attempts=3)
-    start_time_stamp = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=6, microsecond=100222)
-    t1.attempt_task("runner", start_time_stamp)
-
-    t2 = Task(2, "run command example 2", time_stamp, name="example run 2",
-              desc="this is a bologna command that does nothing",  max_attempts=3)
-    start_time_stamp = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=8, microsecond=100222)
-    t2.attempt_task("runner", start_time_stamp)
-    ot = OpenTasks(LOGGER)
-    ot.add_task(t1)
-    ot.add_task(t2)
-    assert len(ot) == 2
-    assert ot.get_task(1) == t1
-    assert ot.get_task(2) == t2
-
-    # remove task without duration
-    ot.remove_task(2)
-    assert len(ot) == 1
-    assert ot.get_task(1) == t1
-    assert ot.get_task(2) is None
-
-
-def test_remove_task_that_doesnt_exist():
-    time_stamp = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=5, microsecond=100222)
-
-    t1 = Task(1, "run command example", time_stamp, name="example run",
-              desc="this is a bologna command that does nothing", duration=500, max_attempts=3)
-    start_time_stamp = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=6, microsecond=100222)
-    t1.attempt_task("runner", start_time_stamp)
-
-    t2 = Task(2, "run command example 2", time_stamp, name="example run 2",
-              desc="this is a bologna command that does nothing", duration=90, max_attempts=3)
-    start_time_stamp = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=8, microsecond=100222)
-    t2.attempt_task("runner", start_time_stamp)
-    ot = OpenTasks(LOGGER)
-    ot.add_task(t1)
-    ot.add_task(t2)
-    assert len(ot) == 2
-    assert ot.get_task(1) == t1
-    assert ot.get_task(2) == t2
-
-    # remove non-existent task
-    ot.remove_task("id that doesn't exist")
-
-    assert len(ot) == 2
-    assert ot.get_task(1) == t1
-    assert ot.get_task(2) == t2
-
-
-# def test_get_task():
-    # pass
-    # well tested in other functions
-
-
-def test_get_task_that_doesnt_exist():
-    time_stamp = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=5, microsecond=100222)
-
-    t1 = Task(1, "run command example", time_stamp, name="example run",
-              desc="this is a bologna command that does nothing", duration=500, max_attempts=3)
-    start_time_stamp = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=6, microsecond=100222)
-    t1.attempt_task("runner", start_time_stamp)
-
-    t2 = Task(2, "run command example 2", time_stamp, name="example run 2",
-              desc="this is a bologna command that does nothing", duration=90, max_attempts=3)
-    start_time_stamp = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=8, microsecond=100222)
-    t2.attempt_task("runner", start_time_stamp)
-    ot = OpenTasks(LOGGER)
-    ot.add_task(t1)
-    ot.add_task(t2)
-
-    assert ot.get_task("non existant id") is None
-
-
-def test_all_tasks():
-    time_stamp = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=5, microsecond=100222)
-
-    t1 = Task(1, "run command example", time_stamp, name="example run",
-              desc="this is a bologna command that does nothing", duration=500, max_attempts=3)
-    start_time_stamp = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=6, microsecond=100222)
-    t1.attempt_task("runner", start_time_stamp)
-
-    t2 = Task(2, "run command example 2", time_stamp, name="example run 2",
-              desc="this is a bologna command that does nothing", duration=90, max_attempts=3)
-    start_time_stamp = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=8, microsecond=100222)
-    t2.attempt_task("runner", start_time_stamp)
-    ot = OpenTasks(LOGGER)
-    ot.add_task(t1)
-    ot.add_task(t2)
-
-    # should be sorted by creation time
-    tasks = ot.all_tasks()
-    assert len(tasks) == 2
-    assert tasks[0] == t1
-    assert tasks[1] == t2
-
-
-def test_all_tasks_added_in_reverse_order():
-    # same as test_all_tasks but the creation times are reversed
-    time_stamp = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=5, microsecond=100222)
-
-    t1 = Task(1, "run command example", time_stamp, name="example run",
-              desc="this is a bologna command that does nothing", duration=500, max_attempts=3)
-    start_time_stamp = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=8, microsecond=100222)
-    t1.attempt_task("runner", start_time_stamp)
-
-    t2 = Task(2, "run command example 2", time_stamp, name="example run 2",
-              desc="this is a bologna command that does nothing", duration=90, max_attempts=3)
-    start_time_stamp = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=6, microsecond=100222)
-    t2.attempt_task("runner", start_time_stamp)
-    ot = OpenTasks(LOGGER)
-    ot.add_task(t1)
-    ot.add_task(t2)
-
-    # should be sorted by creation time
-    tasks = ot.all_tasks()
-    assert len(tasks) == 2
-    assert tasks[0] == t1
-    assert tasks[1] == t2
-
-
-# def test_len():
-    # pass
-    # tested well enough in other tests
-

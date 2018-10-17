@@ -14,137 +14,133 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
  DEALINGS IN THE SOFTWARE.
 """
 
-from simple_task_server import SimpleTaskQueue
-from simple_task_server import Task
-from simple_task_server import TaskManager
+from simple_task_objects import Task
+from simple_task_manager import TaskManager
 from datetime import datetime
 import pytest
 import logging
+import tempfile
 
 LOGGER = logging.getLogger(__name__)
 
 
 @pytest.fixture
 def basic_task_manager():
+    temp = tempfile.NamedTemporaryFile()
+    task_manager = TaskManager(temp.name, LOGGER)
     time_stamp = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=5, microsecond=100222)
-    tq = SimpleTaskQueue(LOGGER)
-    t1 = Task(1, "run command example", time_stamp, name="example run", desc="this is a bologna command that does nothing")
-    tq.add_task(t1)
-    t2 = Task(2, "python -m some_script", time_stamp, name="example python run that will only try to run once and should last 3 minutes")
-    tq.add_task(t2)
-    t3 = Task(3, "cd my_directory; python -m some_script", time_stamp, name="multiple commands", desc="an example of multiple commands in  one task")
-    tq.add_task(t3)
-    tm = TaskManager(LOGGER)
-    tm._todo_queue = tq
-    return tm
+    task_manager.add_task("run command example", time_stamp, name="example run",
+                          desc="this is a bologna command that does nothing")
+    task_manager.add_task("python -m some_script", time_stamp,
+                          name="example python run that will only try to run once and should last 3 minutes")
+    task_manager.add_task("cd my_directory; python -m some_script", time_stamp, name="multiple commands",
+                          desc="an example of multiple commands in  one task")
+    yield task_manager
+    task_manager.close()
+    temp.close()
 
 
-def test_new_task_manager():
+@pytest.fixture
+def empty_task_manager():
+    temp = tempfile.NamedTemporaryFile()
+    task_manager = TaskManager(temp.name, LOGGER)
+    yield task_manager
+    task_manager.close()
+    temp.close()
+
+
+def test_new_task_manager(empty_task_manager):
     # should be empty
-    tm = TaskManager(LOGGER)
-    assert len(tm._todo_queue) == 0
-    assert len(tm._in_process) == 0
-    assert len(tm._done) == 0
+    assert len(empty_task_manager.todo_tasks()) == 0
+    assert len(empty_task_manager.in_process_tasks()) == 0
+    assert len(empty_task_manager.done_tasks()) == 0
     # next task to do should be None
-    task, attempt = tm.start_next_attempt("runner", datetime.now())
+    task, attempt = empty_task_manager.start_next_attempt("runner", datetime.now())
     assert task is None
     assert attempt is None
 
 
-def test_add_task():
-    tm = TaskManager(LOGGER)
-    t1 = Task(1, "run command example", datetime.now(), name="example run", desc="this is a bologna command that does nothing")
-    tm.add_task(t1)
-    assert len(tm._todo_queue) == 1
-    assert len(tm._in_process) == 0
-    assert len(tm._done) == 0
+def test_add_task(empty_task_manager):
+    t1 = empty_task_manager.add_task("run command example", datetime.now(), name="example run",
+                                     desc="this is a bologna command that does nothing")
+    assert len(empty_task_manager.todo_tasks()) == 1
+    assert len(empty_task_manager.in_process_tasks()) == 0
+    assert len(empty_task_manager.done_tasks()) == 0
+    task = empty_task_manager.get_task(t1.task_id())
+    assert task is not None
+    assert task.task_id() == t1.task_id()
+    assert task.cmd == t1.cmd
+    assert task.name == t1.name
+    assert task.desc == t1.desc
+    assert task.duration == t1.duration
+    assert task.max_attempts == t1.max_attempts
+    assert task.created_time == t1.created_time
 
-    t2 = Task(2, "another run command example", datetime.now(), name="example run", desc="this is a bologna command that does nothing")
-    tm.add_task(t2)
-    assert len(tm._todo_queue) == 2
-    assert len(tm._in_process) == 0
-    assert len(tm._done) == 0
-
-
-def test_add_same_task_id_more_than_once():
-    tm = TaskManager(LOGGER)
-    t1 = Task(1, "run command example", datetime.now(), name="example run", desc="this is a bologna command that does nothing")
-    tm.add_task(t1)
-    assert len(tm._todo_queue) == 1
-    assert len(tm._in_process) == 0
-    assert len(tm._done) == 0
-
-    t2 = Task(1, "another run command example", datetime.now(), name="example run", desc="this is a bologna command that does nothing")
-    tm.add_task(t2)
-    assert len(tm._todo_queue) == 1
-    assert len(tm._in_process) == 0
-    assert len(tm._done) == 0
-
-
-def test_add_same_task_more_than_once():
-    tm = TaskManager(LOGGER)
-    t1 = Task(1, "run command example", datetime.now(), name="example run", desc="this is a bologna command that does nothing")
-    tm.add_task(t1)
-    assert len(tm._todo_queue) == 1
-    assert len(tm._in_process) == 0
-    assert len(tm._done) == 0
-
-    tm.add_task(t1)
-    assert len(tm._todo_queue) == 1
-    assert len(tm._in_process) == 0
-    assert len(tm._done) == 0
+    t2 = empty_task_manager.add_task("another run command example", datetime.now(), name="example run",
+                                     desc="this is a bologna command that does nothing")
+    assert len(empty_task_manager.todo_tasks()) == 2
+    assert len(empty_task_manager.in_process_tasks()) == 0
+    assert len(empty_task_manager.done_tasks()) == 0
+    task = empty_task_manager.get_task(t2.task_id())
+    assert task.task_id() == t2.task_id()
+    assert task.cmd == t2.cmd
+    assert task.name == t2.name
+    assert task.desc == t2.desc
+    assert task.duration == t2.duration
+    assert task.max_attempts == t2.max_attempts
+    assert task.created_time == t2.created_time
 
 
 def test_next_task_no_expired_or_failed(basic_task_manager):
     # make sure baseline is right
-    assert len(basic_task_manager._todo_queue) == 3
-    assert len(basic_task_manager._in_process) == 0
-    assert len(basic_task_manager._done) == 0
+    assert len(basic_task_manager.todo_tasks()) == 3
+    assert len(basic_task_manager.in_process_tasks()) == 0
+    assert len(basic_task_manager.done_tasks()) == 0
 
     time = datetime.now()
     runner = "runner1"
     task, attempt = basic_task_manager.start_next_attempt(runner, time)
     assert task.task_id() == 1
-    assert len(task._attempts) == 1
-    assert task.most_recent_attempt().id() == attempt.id()  # TODO attempt equality
+    assert len(basic_task_manager.get_task_attempts(task.task_id())) == 1
+    assert basic_task_manager.get_most_recent_attempt(task.task_id()).id() == attempt.id()  # TODO attempt equality
     assert attempt.start_time == time
     assert attempt.runner == runner
     assert not attempt.is_failed()
     assert not attempt.is_completed()
     assert attempt.is_in_process()
-    assert len(basic_task_manager._todo_queue) == 2
-    assert len(basic_task_manager._in_process) == 1
-    assert len(basic_task_manager._done) == 0
+    assert len(basic_task_manager.todo_tasks()) == 2
+    assert len(basic_task_manager.in_process_tasks()) == 1
+    assert len(basic_task_manager.done_tasks()) == 0
 
     time = datetime.now()
     runner = "runner2"
     task, attempt = basic_task_manager.start_next_attempt(runner, time)
-    assert len(task._attempts) == 1
+    assert len(basic_task_manager.get_task_attempts(task.task_id())) == 1
     assert task.task_id() == 2
-    assert task.most_recent_attempt().id() == attempt.id()  # TODO attempt equality
+    assert basic_task_manager.get_most_recent_attempt(task.task_id()).id() == attempt.id()  # TODO attempt equality
     assert attempt.start_time == time
     assert attempt.runner == runner
     assert not attempt.is_failed()
     assert not attempt.is_completed()
     assert attempt.is_in_process()
-    assert len(basic_task_manager._todo_queue) == 1
-    assert len(basic_task_manager._in_process) == 2
-    assert len(basic_task_manager._done) == 0
+    assert len(basic_task_manager.todo_tasks()) == 1
+    assert len(basic_task_manager.in_process_tasks()) == 2
+    assert len(basic_task_manager.done_tasks()) == 0
 
     time = datetime.now()
     runner = "runner1"
     task, attempt = basic_task_manager.start_next_attempt(runner, time)
-    assert len(task._attempts) == 1
+    assert len(basic_task_manager.get_task_attempts(task.task_id())) == 1
     assert task.task_id() == 3
-    assert task.most_recent_attempt().id() == attempt.id()  # TODO attempt equality
+    assert basic_task_manager.get_most_recent_attempt(task.task_id()).id() == attempt.id()  # TODO attempt equality
     assert attempt.start_time == time
     assert attempt.runner == runner
     assert not attempt.is_failed()
     assert not attempt.is_completed()
     assert attempt.is_in_process()
-    assert len(basic_task_manager._todo_queue) == 0
-    assert len(basic_task_manager._in_process) == 3
-    assert len(basic_task_manager._done) == 0
+    assert len(basic_task_manager.todo_tasks()) == 0
+    assert len(basic_task_manager.in_process_tasks()) == 3
+    assert len(basic_task_manager.done_tasks()) == 0
 
 
 def test_mark_completed_when_in_process(basic_task_manager):
