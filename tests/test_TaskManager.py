@@ -305,7 +305,6 @@ def test_mark_completed_when_done(empty_task_manager):
     assert len(empty_task_manager.in_process_tasks()) == 1
     assert len(empty_task_manager.done_tasks()) == 0
 
-
     # start a second attempt
     second_start_time = datetime(year=2018, month=8, day=13, hour=5, minute=13, second=30, microsecond=100222)
     task2, attempt2 = empty_task_manager.start_next_attempt("runner2", second_start_time)
@@ -343,90 +342,88 @@ def test_mark_completed_when_done(empty_task_manager):
     assert empty_task_manager.get_done_time(task.task_id()) == complete_time
 
 
-def test_mark_completed_when_attempt_unknown():
+def test_mark_completed_when_attempt_unknown(empty_task_manager):
     time_stamp1 = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=5, microsecond=100222)
-    tq = SimpleTaskQueue(LOGGER)
-    t1 = Task(1, "run command example", time_stamp1, name="example run",
-              desc="this is a bologna command that does nothing",
-              duration=100, max_attempts=2)
-    tq.add_task(t1)
-    tm = TaskManager(LOGGER)
-    tm._todo_queue = tq
+    t1 = empty_task_manager.add_task("run command example", time_stamp1, name="example run",
+                                     desc="this is a bologna command that does nothing",
+                                     duration=100, max_attempts=2)
 
     completed_time_stamp = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=44, microsecond=100222)
-    assert tm.complete_attempt(t1.task_id(), "some_random_unknown_attempt_id", completed_time_stamp) is False
+    assert empty_task_manager.complete_attempt(t1.task_id(), "some_random_unknown_attempt_id", completed_time_stamp) is False
 
 
 def test_find_task_in_todo(basic_task_manager):
-    t = basic_task_manager._find_task(1, todo=True, in_process=True, done=True)
+    t = basic_task_manager._find_task(1, todo=True, in_process=False, done=False)
     assert t is not None
     assert t.task_id() == 1
 
 
-# def test_find_in_inprocess(basic_task_manager):
-
-
 def test_delete_from_todo(basic_task_manager):
     # make sure baseline is what we expect
-    assert len(basic_task_manager._todo_queue) == 3
-    assert len(basic_task_manager._in_process) == 0
-    assert len(basic_task_manager._done) == 0
+    assert len(basic_task_manager.todo_tasks()) == 3
+    assert len(basic_task_manager.in_process_tasks()) == 0
+    assert len(basic_task_manager.done_tasks()) == 0
     assert basic_task_manager._find_task(1, todo=True) is not None
 
     basic_task_manager.delete_task(1)
 
     # now the task should be gone
-    assert len(basic_task_manager._todo_queue) == 2
-    assert len(basic_task_manager._in_process) == 0
-    assert len(basic_task_manager._done) == 0
+    print (basic_task_manager.todo_tasks())
+    assert len(basic_task_manager.todo_tasks()) == 2
+    assert len(basic_task_manager.in_process_tasks()) == 0
+    assert len(basic_task_manager.done_tasks()) == 0
+    # shouldn't be in to do
     assert basic_task_manager._find_task(1, todo=True) is None
+    # shouldn't be anywhere
+    assert basic_task_manager._find_task(1, todo=True, in_process=True, done=True) is None
 
 
 def test_delete_from_inprocess(basic_task_manager):
     # make sure baseline is what we expect
-    assert len(basic_task_manager._todo_queue) == 3
-    assert len(basic_task_manager._in_process) == 0
-    assert len(basic_task_manager._done) == 0
+    assert len(basic_task_manager.todo_tasks()) == 3
+    assert len(basic_task_manager.in_process_tasks()) == 0
+    assert len(basic_task_manager.done_tasks()) == 0
     assert basic_task_manager._find_task(1, todo=True) is not None
 
     # move task to is_in_process
     basic_task_manager.start_next_attempt("runner", datetime.now())
-    assert len(basic_task_manager._todo_queue) == 2
-    assert len(basic_task_manager._in_process) == 1
-    assert len(basic_task_manager._done) == 0
+    assert len(basic_task_manager.todo_tasks()) == 2
+    assert len(basic_task_manager.in_process_tasks()) == 1
+    assert len(basic_task_manager.done_tasks()) == 0
     assert basic_task_manager._find_task(1, todo=True) is None
     assert basic_task_manager._find_task(1, in_process=True) is not None
 
     basic_task_manager.delete_task(1)
 
     # now the task should be gone
-    assert len(basic_task_manager._todo_queue) == 2
-    assert len(basic_task_manager._in_process) == 0
-    assert len(basic_task_manager._done) == 0
+    assert len(basic_task_manager.todo_tasks()) == 2
+    assert len(basic_task_manager.in_process_tasks()) == 0
+    assert len(basic_task_manager.done_tasks()) == 0
     assert basic_task_manager._find_task(1, in_process=True) is None
+    assert basic_task_manager._find_task(1, todo=True, in_process=True, done=True) is None
 
 
 def test_delete_from_done_when_completed(basic_task_manager):
     # make sure baseline is what we expect
-    assert len(basic_task_manager._todo_queue) == 3
-    assert len(basic_task_manager._in_process) == 0
-    assert len(basic_task_manager._done) == 0
+    assert len(basic_task_manager.todo_tasks()) == 3
+    assert len(basic_task_manager.in_process_tasks()) == 0
+    assert len(basic_task_manager.done_tasks()) == 0
     assert basic_task_manager._find_task(1, todo=True) is not None
 
     # move task to is_in_process
     task, attempt = basic_task_manager.start_next_attempt("runner", datetime.now())
     assert task.task_id() == 1
-    assert len(basic_task_manager._todo_queue) == 2
-    assert len(basic_task_manager._in_process) == 1
-    assert len(basic_task_manager._done) == 0
+    assert len(basic_task_manager.todo_tasks()) == 2
+    assert len(basic_task_manager.in_process_tasks()) == 1
+    assert len(basic_task_manager.done_tasks()) == 0
     assert basic_task_manager._find_task(1, todo=True) is None
     assert basic_task_manager._find_task(1, in_process=True) is not None
 
     # now complete
     basic_task_manager.complete_attempt(task.task_id(), attempt.id(), datetime.now())
-    assert len(basic_task_manager._todo_queue) == 2
-    assert len(basic_task_manager._in_process) == 0
-    assert len(basic_task_manager._done) == 1
+    assert len(basic_task_manager.todo_tasks()) == 2
+    assert len(basic_task_manager.in_process_tasks()) == 0
+    assert len(basic_task_manager.done_tasks()) == 1
     assert basic_task_manager._find_task(1, todo=True) is None
     assert basic_task_manager._find_task(1, in_process=True) is None
     assert basic_task_manager._find_task(1, done=True) is not None
@@ -434,33 +431,33 @@ def test_delete_from_done_when_completed(basic_task_manager):
     basic_task_manager.delete_task(1)
 
     # now the task should be gone
-    assert len(basic_task_manager._todo_queue) == 2
-    assert len(basic_task_manager._in_process) == 0
-    assert len(basic_task_manager._done) == 0
+    assert len(basic_task_manager.todo_tasks()) == 2
+    assert len(basic_task_manager.in_process_tasks()) == 0
+    assert len(basic_task_manager.done_tasks()) == 0
     assert basic_task_manager._find_task(1, done=True) is None
 
 
 def test_delete_from_done_when_failed(basic_task_manager):
     # make sure baseline is what we expect
-    assert len(basic_task_manager._todo_queue) == 3
-    assert len(basic_task_manager._in_process) == 0
-    assert len(basic_task_manager._done) == 0
+    assert len(basic_task_manager.todo_tasks()) == 3
+    assert len(basic_task_manager.in_process_tasks()) == 0
+    assert len(basic_task_manager.done_tasks()) == 0
     assert basic_task_manager._find_task(1, todo=True) is not None
 
     # move task to is_in_process
     task, attempt = basic_task_manager.start_next_attempt("runner", datetime.now())
     assert task.task_id() == 1
-    assert len(basic_task_manager._todo_queue) == 2
-    assert len(basic_task_manager._in_process) == 1
-    assert len(basic_task_manager._done) == 0
+    assert len(basic_task_manager.todo_tasks()) == 2
+    assert len(basic_task_manager.in_process_tasks()) == 1
+    assert len(basic_task_manager.done_tasks()) == 0
     assert basic_task_manager._find_task(1, todo=True) is None
     assert basic_task_manager._find_task(1, in_process=True) is not None
 
     # now fail
-    basic_task_manager.fail_attempt(task.task_id(), attempt.id(), datetime.now())
-    assert len(basic_task_manager._todo_queue) == 2
-    assert len(basic_task_manager._in_process) == 0
-    assert len(basic_task_manager._done) == 1
+    basic_task_manager.fail_attempt(task.task_id(), attempt.id(), "cause it just failed", datetime.now())
+    assert len(basic_task_manager.todo_tasks()) == 2
+    assert len(basic_task_manager.in_process_tasks()) == 0
+    assert len(basic_task_manager.done_tasks()) == 1
     assert basic_task_manager._find_task(1, todo=True) is None
     assert basic_task_manager._find_task(1, in_process=True) is None
     assert basic_task_manager._find_task(1, done=True) is not None
@@ -468,59 +465,54 @@ def test_delete_from_done_when_failed(basic_task_manager):
     basic_task_manager.delete_task(1)
 
     # now the task should be gone
-    assert len(basic_task_manager._todo_queue) == 2
-    assert len(basic_task_manager._in_process) == 0
-    assert len(basic_task_manager._done) == 0
+    assert len(basic_task_manager.todo_tasks()) == 2
+    assert len(basic_task_manager.in_process_tasks()) == 0
+    assert len(basic_task_manager.done_tasks()) == 0
     assert basic_task_manager._find_task(1, done=True) is None
+    assert basic_task_manager._find_task(1, todo=True, in_process=True, done=True) is None
 
 
 def test_move_task_to_done_when_in_process(basic_task_manager):
     task, attempt = basic_task_manager.start_next_attempt("runner", datetime.now())
     assert task.task_id() == 1
-    assert len(basic_task_manager._todo_queue) == 2
-    assert len(basic_task_manager._in_process) == 1
-    assert len(basic_task_manager._done) == 0
+    assert len(basic_task_manager.todo_tasks()) == 2
+    assert len(basic_task_manager.in_process_tasks()) == 1
+    assert len(basic_task_manager.done_tasks()) == 0
     assert basic_task_manager._find_task(1, todo=True) is None
     assert basic_task_manager._find_task(1, in_process=True) is not None
 
     basic_task_manager._move_task_to_done(task)
-    assert len(basic_task_manager._todo_queue) == 2
-    assert len(basic_task_manager._in_process) == 0
-    assert len(basic_task_manager._done) == 1
+    assert len(basic_task_manager.todo_tasks()) == 2
+    assert len(basic_task_manager.in_process_tasks()) == 0
+    assert len(basic_task_manager.done_tasks()) == 1
     assert basic_task_manager._find_task(1, todo=True) is None
     assert basic_task_manager._find_task(1, in_process=True) is None
     assert basic_task_manager._find_task(1, done=True) is not None
 
 
-def test_move_task_to_done_when_not_in_process():
+def test_move_task_to_done_when_not_in_process(empty_task_manager):
     time_stamp = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=5, microsecond=100222)
-    tq = SimpleTaskQueue(LOGGER)
-    t1 = Task(1, "run command example", time_stamp, name="example run",
-              desc="this is a bologna command that does nothing")
-    tq.add_task(t1)
-    t2 = Task(2, "python -m some_script", time_stamp,
-              name="example python run that will only try to run once and should last 3 minutes")
-    tq.add_task(t2)
-    t3 = Task(3, "cd my_directory; python -m some_script", time_stamp, name="multiple commands",
-              desc="an example of multiple commands in  one task")
-    tq.add_task(t3)
-    tm = TaskManager(LOGGER)
-    tm._todo_queue = tq
+    t1 = empty_task_manager.add_task("run command example", time_stamp, name="example run",
+                                     desc="this is a bologna command that does nothing")
+    empty_task_manager.add_task("python -m some_script", time_stamp,
+                                name="example python run that will only try to run once and should last 3 minutes")
+    empty_task_manager.add_task("cd my_directory; python -m some_script", time_stamp, name="multiple commands",
+                                desc="an example of multiple commands in  one task")
 
-    assert len(tm._todo_queue) == 3
-    assert len(tm._in_process) == 0
-    assert len(tm._done) == 0
-    assert tm._find_task(1, todo=True) is not None
-    assert tm._find_task(1, in_process=True) is None
-    assert tm._find_task(1, done=True) is None
+    assert len(empty_task_manager.todo_tasks()) == 3
+    assert len(empty_task_manager.in_process_tasks()) == 0
+    assert len(empty_task_manager.done_tasks()) == 0
+    assert empty_task_manager._find_task(t1.task_id(), todo=True) is not None
+    assert empty_task_manager._find_task(t1.task_id(), in_process=True) is None
+    assert empty_task_manager._find_task(t1.task_id(), done=True) is None
 
-    tm._move_task_to_done(t1)
-    assert len(tm._todo_queue) == 2
-    assert len(tm._in_process) == 0
-    assert len(tm._done) == 1
-    assert tm._find_task(1, todo=True) is None
-    assert tm._find_task(1, in_process=True) is None
-    assert tm._find_task(1, done=True) is not None
+    empty_task_manager._move_task_to_done(t1)
+    assert len(empty_task_manager.todo_tasks()) == 2
+    assert len(empty_task_manager.in_process_tasks()) == 0
+    assert len(empty_task_manager.done_tasks()) == 1
+    assert empty_task_manager._find_task(t1.task_id(), todo=True) is None
+    assert empty_task_manager._find_task(t1.task_id(), in_process=True) is None
+    assert empty_task_manager._find_task(t1.task_id(), done=True) is not None
 
 
 def test_find_task_non_existant(basic_task_manager):
@@ -546,7 +538,7 @@ def test_find_task_todo_looking_in_all(basic_task_manager):
 def test_find_task_inprocess_looking_in_in_process(basic_task_manager):
     time_stamp = datetime(year=2018, month=8, day=13, hour=7, minute=10, second=5, microsecond=100222)
     task, attempt = basic_task_manager.start_next_attempt("runner", time_stamp)
-    assert basic_task_manager._find_task(1, todo=False, in_process=True, done=False) == task
+    assert basic_task_manager._find_task(1, todo=False, in_process=True, done=False).task_id() == task.task_id()
 
 
 def test_find_task_inprocess_looking_in_done(basic_task_manager):
@@ -564,7 +556,7 @@ def test_find_task_inprocess_looking_in_todo(basic_task_manager):
 def test_find_task_inprocess_looking_in_all(basic_task_manager):
     time_stamp = datetime(year=2018, month=8, day=13, hour=7, minute=10, second=5, microsecond=100222)
     task, attempt = basic_task_manager.start_next_attempt("runner", time_stamp)
-    assert basic_task_manager._find_task(1, todo=True, in_process=True, done=True) == task
+    assert basic_task_manager._find_task(1, todo=True, in_process=True, done=True).task_id() == task.task_id()
 
 
 def test_find_task_done_looking_in_in_process(basic_task_manager):
@@ -580,7 +572,7 @@ def test_find_task_done_looking_in_done(basic_task_manager):
     task, attempt = basic_task_manager.start_next_attempt("runner", time_stamp)
     task = basic_task_manager._find_task(task.task_id(), in_process=True)
     basic_task_manager._move_task_to_done(task)
-    assert basic_task_manager._find_task(1, todo=False, in_process=False, done=True) == task
+    assert basic_task_manager._find_task(1, todo=False, in_process=False, done=True).task_id() == task.task_id()
 
 
 def test_find_task_done_looking_in_todo(basic_task_manager):
@@ -596,6 +588,7 @@ def test_find_task_done_looking_in_all(basic_task_manager):
     task, attempt = basic_task_manager.start_next_attempt("runner", time_stamp)
     task = basic_task_manager._find_task(task.task_id(), in_process=True)
     basic_task_manager._move_task_to_done(task)
-    assert basic_task_manager._find_task(1, todo=True, in_process=True, done=True) == task
+    assert basic_task_manager._find_task(1, todo=True, in_process=True, done=True).task_id() == task.task_id()
 
 
+# TODO test completing a deleted attempt
