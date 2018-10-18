@@ -177,7 +177,7 @@ class TaskManager(object):
             if attempt_id is not None:
                 num_attempts = self._persistence.get_attempt_count(next_task.task_id())
                 self._logger.info("TaskManager.start_next_attempt: Created Attempt %s for Task %s. Attempt %d of %d." %
-                                  (str(attempt.id()), str(next_task.task_id()), num_attempts, next_task.max_attempts))
+                                  (attempt_id, str(next_task.task_id()), num_attempts, next_task.max_attempts))
         else:  # if still no next task, get one from the queued up new tasks
             todo_ids = self._persistence.get_task_ids(SQLitePersistence.TODO_QUEUE)
             for todo_id in todo_ids:
@@ -330,6 +330,9 @@ class TaskManager(object):
 
     def get_task(self, task_id):
         return self._persistence.get_task(task_id)
+
+    def get_done_time(self, task_id):
+        return self._persistence.get_task_done_time(task_id)
 
     def get_task_attempts(self, task_id):
         return self._persistence.get_attempts(task_id)
