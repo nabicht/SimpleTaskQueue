@@ -144,10 +144,10 @@ def test_next_task_no_expired_or_failed(basic_task_manager):
 
 
 def test_mark_completed_when_in_process(basic_task_manager):
-    # make sure baseline is what we expect
-    assert len(basic_task_manager._todo_queue) == 3
-    assert len(basic_task_manager._in_process) == 0
-    assert len(basic_task_manager._done) == 0
+    # make sure baseline is right
+    assert len(basic_task_manager.todo_tasks()) == 3
+    assert len(basic_task_manager.in_process_tasks()) == 0
+    assert len(basic_task_manager.done_tasks()) == 0
 
     start_time = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=30, microsecond=100222)
     complete_time = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=40, microsecond=100222)
@@ -155,27 +155,45 @@ def test_mark_completed_when_in_process(basic_task_manager):
     # start one up and make sure as expected
     task, attempt = basic_task_manager.start_next_attempt("runner", start_time)
     assert task.task_id() == 1
-    assert len(basic_task_manager._todo_queue) == 2
-    assert len(basic_task_manager._in_process) == 1
-    assert len(basic_task_manager._done) == 0
+    assert basic_task_manager.get_done_time(task.task_id()) is None
+    assert task.is_in_process() is True
+    assert task.is_todo() is False
+    assert task.has_completed() is False
+    assert task.has_failed() is False
+    # make sure baseline is right
+    assert len(basic_task_manager.todo_tasks()) == 2
+    assert len(basic_task_manager.in_process_tasks()) == 1
+    assert len(basic_task_manager.done_tasks()) == 0
+    # should not find task in to do tasks or done
+    assert basic_task_manager._find_task(task.task_id(), todo=True) is None
+    assert basic_task_manager._find_task(task.task_id(), done=True) is None
+    # should find task in in process
+    assert basic_task_manager._find_task(task.task_id(), in_process=True) is not None
 
     # mark completed
     basic_task_manager.complete_attempt(task.task_id(), attempt.id(), complete_time)
+    assert len(basic_task_manager.todo_tasks()) == 2
+    assert len(basic_task_manager.in_process_tasks()) == 0
+    assert len(basic_task_manager.done_tasks()) == 1
+    # should not find task in to do tasks or in process
+    assert basic_task_manager._find_task(task.task_id(), todo=True) is None
+    assert basic_task_manager._find_task(task.task_id(), in_process=True) is None
+    # should find task in done
+    assert basic_task_manager._find_task(task.task_id(), done=True) is not None
+    # get most recent state of task
+    task = basic_task_manager.get_task(task.task_id())
+    assert task.has_failed() is False
+    assert task.has_completed() is True
+    assert task.is_in_process() is False
+    assert task.is_todo() is False
+    assert basic_task_manager.get_done_time(task.task_id()) == complete_time
 
-    assert len(basic_task_manager._todo_queue) == 2
-    assert len(basic_task_manager._in_process) == 0
-    assert len(basic_task_manager._done) == 1
-    assert task.is_completed()
-    assert not task.is_in_process()
-    assert not task.is_failed()
-    assert task.open_time() == 35.0
 
-
-def test_mark_completed_when_multiple_attemtps_in_process(basic_task_manager):
+def test_mark_completed_when_multiple_attempts_in_process(basic_task_manager):
     # make sure baseline is what we expect
-    assert len(basic_task_manager._todo_queue) == 3
-    assert len(basic_task_manager._in_process) == 0
-    assert len(basic_task_manager._done) == 0
+    assert len(basic_task_manager.todo_tasks()) == 3
+    assert len(basic_task_manager.in_process_tasks()) == 0
+    assert len(basic_task_manager.done_tasks()) == 0
 
     start_time = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=30, microsecond=100222)
     complete_time = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=40, microsecond=100222)
@@ -186,126 +204,143 @@ def test_mark_completed_when_multiple_attemtps_in_process(basic_task_manager):
     task2, attempt2 = basic_task_manager.start_next_attempt("runner", start_time)
     assert task2.task_id() == 2
 
-    assert len(basic_task_manager._todo_queue) == 1
-    assert len(basic_task_manager._in_process) == 2
-    assert len(basic_task_manager._done) == 0
+    assert len(basic_task_manager.todo_tasks()) == 1
+    assert len(basic_task_manager.in_process_tasks()) == 2
+    assert len(basic_task_manager.done_tasks()) == 0
 
     # mark completed
     basic_task_manager.complete_attempt(task1.task_id(), attempt1.id(), complete_time)
 
-    assert len(basic_task_manager._todo_queue) == 1
-    assert len(basic_task_manager._in_process) == 1
-    assert len(basic_task_manager._done) == 1
-    assert task1.is_completed()
-    assert not task1.is_in_process()
-    assert not task1.is_failed()
-    assert task1.open_time() == 35.0
+    assert len(basic_task_manager.todo_tasks()) == 1
+    assert len(basic_task_manager.in_process_tasks()) == 1
+    assert len(basic_task_manager.done_tasks()) == 1
+    # get most recent state refresh of task
+    task1 = basic_task_manager.get_task(task1.task_id())
+    assert task1.has_completed() is True
+    assert task1.is_in_process() is False
+    assert task1.has_failed() is False
 
-    assert not task2.is_completed()
-    assert not task2.is_failed()
-    assert task2.open_time() is None
+    # get most recent task 2 to make sure nothing chanted
+    task2 = basic_task_manager.get_task(task2.task_id())
+    assert task2.has_completed() is False
+    assert task2.has_failed() is False
+    assert task2.is_in_process() is True
+    assert task2.is_todo() is False
 
 
 def test_mark_completed_when_multiple_attempts_in_process_other_order(basic_task_manager):
     # make sure baseline is what we expect
-    assert len(basic_task_manager._todo_queue) == 3
-    assert len(basic_task_manager._in_process) == 0
-    assert len(basic_task_manager._done) == 0
+    assert len(basic_task_manager.todo_tasks()) == 3
+    assert len(basic_task_manager.in_process_tasks()) == 0
+    assert len(basic_task_manager.done_tasks()) == 0
 
     start_time = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=30, microsecond=100222)
     complete_time = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=40, microsecond=100222)
 
-    # start one up and make sure as expected
+    # start a couple up and make sure as expected
     task1, attempt1 = basic_task_manager.start_next_attempt("runner", start_time)
     assert task1.task_id() == 1
     task2, attempt2 = basic_task_manager.start_next_attempt("runner", start_time)
     assert task2.task_id() == 2
 
-    assert len(basic_task_manager._todo_queue) == 1
-    assert len(basic_task_manager._in_process) == 2
-    assert len(basic_task_manager._done) == 0
+    # make sure baseline is what we expect
+    assert len(basic_task_manager.todo_tasks()) == 1
+    assert len(basic_task_manager.in_process_tasks()) == 2
+    assert len(basic_task_manager.done_tasks()) == 0
 
     # mark completed
     basic_task_manager.complete_attempt(task2.task_id(), attempt2.id(), complete_time)
 
-    assert len(basic_task_manager._todo_queue) == 1
-    assert len(basic_task_manager._in_process) == 1
-    assert len(basic_task_manager._done) == 1
-    assert task2.is_completed()
-    assert not task2.is_in_process()
-    assert not task2.is_failed()
-    assert task2.open_time() == 35.0
+    # make sure baseline is what we expect
+    assert len(basic_task_manager.todo_tasks()) == 1
+    assert len(basic_task_manager.in_process_tasks()) == 1
+    assert len(basic_task_manager.done_tasks()) == 1
+    # refresh task2 to get most recent state
+    task2 = basic_task_manager.get_task(task2.task_id())
+    assert task2.has_completed() is True
+    assert task2.is_in_process() is False
+    assert task2.has_failed() is False
+    assert task2.is_todo() is False
 
-    assert not task1.is_completed()
-    assert not task1.is_failed()
-    assert task1.open_time() is None
+    # refresh task 1 to get most recent state
+    task1 = basic_task_manager.get_task(task1.task_id())
+    assert task1.has_completed() is False
+    assert task1.has_failed() is False
+    assert task1.is_in_process() is True
+    assert task1.is_todo() is False
+
+    # get task3 to make sure nothing changed
+    task3 = basic_task_manager.get_task(3)
+    assert task3.has_completed() is False
+    assert task3.has_failed() is False
+    assert task3.is_in_process() is False
+    assert task3.is_todo() is True
 
 
-def test_mark_completed_when_done():
+def test_mark_completed_when_done(empty_task_manager):
     time_stamp1 = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=5, microsecond=100222)
     time_stamp2 = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=10, microsecond=0)
     time_stamp3 = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=15, microsecond=222222)
-    tq = SimpleTaskQueue(LOGGER)
-    t1 = Task(1, "run command example", time_stamp1, name="example run",
-              desc="this is a bologna command that does nothing",
-              duration=100, max_attempts=5)
-    tq.add_task(t1)
-    t2 = Task(2, "python -m some_script", time_stamp2,
-              name="example python run that will only try to run once and should last 3 minutes",
-              duration=180, max_attempts=1)
-    tq.add_task(t2)
-    t3 = Task(3, "cd my_directory; python -m some_script", time_stamp3, name="multiple commands",
-              desc="an example of multiple commands in  one task", duration=200)
-    tq.add_task(t3)
-    basic_task_manager = TaskManager(LOGGER)
-    basic_task_manager._todo_queue = tq
+    empty_task_manager.add_task("run command example", time_stamp1, name="example run",
+                                desc="this is a bologna command that does nothing",
+                                duration=100, max_attempts=5)
+    empty_task_manager.add_task("python -m some_script", time_stamp2,
+                                name="example python run that will only try to run once and should last 3 minutes",
+                                duration=180, max_attempts=1)
+    empty_task_manager.add_task("cd my_directory; python -m some_script", time_stamp3, name="multiple commands",
+                                desc="an example of multiple commands in  one task", duration=200)
 
     # make sure baseline is what we expect
-    assert len(basic_task_manager._todo_queue) == 3
-    assert len(basic_task_manager._in_process) == 0
-    assert len(basic_task_manager._done) == 0
+    assert len(empty_task_manager.todo_tasks()) == 3
+    assert len(empty_task_manager.in_process_tasks()) == 0
+    assert len(empty_task_manager.done_tasks()) == 0
 
     start_time = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=30, microsecond=500000)
     complete_time = datetime(year=2018, month=8, day=13, hour=5, minute=10, second=40, microsecond=600222)
 
     # start one up and make sure as expected
-    task, attempt = basic_task_manager.start_next_attempt("runner", start_time)
+    task, attempt = empty_task_manager.start_next_attempt("runner", start_time)
     assert task.task_id() == 1
-    assert len(basic_task_manager._todo_queue) == 2
-    assert len(basic_task_manager._in_process) == 1
-    assert len(basic_task_manager._done) == 0
+    assert len(empty_task_manager.todo_tasks()) == 2
+    assert len(empty_task_manager.in_process_tasks()) == 1
+    assert len(empty_task_manager.done_tasks()) == 0
+
 
     # start a second attempt
     second_start_time = datetime(year=2018, month=8, day=13, hour=5, minute=13, second=30, microsecond=100222)
-    task2, attempt2 = basic_task_manager.start_next_attempt("runner2", second_start_time)
+    task2, attempt2 = empty_task_manager.start_next_attempt("runner2", second_start_time)
     assert task2.task_id() == 1
     assert attempt2.id() != attempt.id()
-    assert len(basic_task_manager._todo_queue) == 2
-    assert len(basic_task_manager._in_process) == 1
-    assert len(basic_task_manager._done) == 0
+    assert len(empty_task_manager.todo_tasks()) == 2
+    assert len(empty_task_manager.in_process_tasks()) == 1
+    assert len(empty_task_manager.done_tasks()) == 0
 
     # mark completed
-    basic_task_manager.complete_attempt(task.task_id(), attempt.id(), complete_time)
+    empty_task_manager.complete_attempt(task.task_id(), attempt.id(), complete_time)
 
-    assert len(basic_task_manager._todo_queue) == 2
-    assert len(basic_task_manager._in_process) == 0
-    assert len(basic_task_manager._done) == 1
-    assert task.is_completed()
-    assert not task.is_in_process()
-    assert not task.is_failed()
-    assert task.open_time() == 35.5
+    assert len(empty_task_manager.todo_tasks()) == 2
+    assert len(empty_task_manager.in_process_tasks()) == 0
+    assert len(empty_task_manager.done_tasks()) == 1
+    # get most recent version of task to get all state
+    task = empty_task_manager.get_task(task.task_id())
+    assert task.has_completed() is True
+    assert task.is_in_process() is False
+    assert task.has_failed() is False
+    assert task.is_todo() is False
+    assert empty_task_manager.get_done_time(task.task_id()) == complete_time
 
     # mark completed again
     second_complete_time = datetime(year=2018, month=8, day=13, hour=5, minute=10+3, second=40, microsecond=100222)
-    basic_task_manager.complete_attempt(task2.task_id(), attempt2.id(), second_complete_time)
+    empty_task_manager.complete_attempt(task2.task_id(), attempt2.id(), second_complete_time)
     # should have no impact; all should be the same
-    assert len(basic_task_manager._todo_queue) == 2
-    assert len(basic_task_manager._in_process) == 0
-    assert len(basic_task_manager._done) == 1
-    assert task.is_completed()
-    assert not task.is_in_process()
-    assert not task.is_failed()
-    assert task.open_time() == 35.5
+    assert len(empty_task_manager.todo_tasks()) == 2
+    assert len(empty_task_manager.in_process_tasks()) == 0
+    assert len(empty_task_manager.done_tasks()) == 1
+    assert task.has_completed() is True
+    assert task.is_in_process() is False
+    assert task.has_failed() is False
+    assert task.is_todo() is False
+    assert empty_task_manager.get_done_time(task.task_id()) == complete_time
 
 
 def test_mark_completed_when_attempt_unknown():
