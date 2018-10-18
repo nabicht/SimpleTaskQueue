@@ -41,7 +41,7 @@ def add_task(server, command, name=None, description=None, dependent_on=None, ma
     if log is not None:
         log.debug("add_task received: %s" % r.text)
     response_dict = json.loads(r.text)
-    return str(response_dict['task_id'])
+    return int(response_dict['task_id'])
 
 
 def delete_task(server, task_id, log=None):
