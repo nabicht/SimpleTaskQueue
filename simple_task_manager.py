@@ -145,7 +145,7 @@ class TaskManager(object):
 
     def _move_task_to_done(self, task):
         task_id = task.task_id()
-        self._logger.debug("TaskManager._move_task_to_done: Task %s moving from %s to Done." % (str(task_id), SQLitePersistence.QUEUE_STR[task.queue]))
+        self._logger.debug("TaskManager._move_task_to_done: Task %s moving to Done." % str(task_id))
         try:
             self._persistence.update_task_to_done(task.task_id())
         except:
@@ -320,12 +320,11 @@ class TaskManager(object):
                 break
         if can_delete:
             try:
-                self._persistence.delete_task(task_id)
+                deleted = self._persistence.delete_task(task_id)
+                print("DELETED", deleted)
                 self._logger.info("Task %s and all of its attempts have been deleted")
-                deleted = True
             except:
                 self._logger.error("Could not delete Task %s.")
-
         return deleted
 
     def get_task(self, task_id):
