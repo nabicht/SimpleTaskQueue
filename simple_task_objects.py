@@ -92,14 +92,6 @@ class TaskAttempt:
     def id(self):
         return self._attempt_id
 
-    def mark_failed(self, reason):
-        self._fail_reason = reason
-        self._status = TaskAttempt.FAILED_STATUS
-
-    def mark_completed(self, time_stamp):
-        self._status = TaskAttempt.COMPLETED_STATUS
-        self.completed_time = time_stamp
-
     def is_failed(self):
         return self._status == TaskAttempt.FAILED_STATUS
 
@@ -110,4 +102,4 @@ class TaskAttempt:
         return self._status < TaskAttempt.COMPLETED_STATUS
 
     def __hash__(self):
-        return self._attempt_id
+        return hash(self._attempt_id)
