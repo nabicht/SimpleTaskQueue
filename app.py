@@ -60,7 +60,7 @@ class TaskManagement(Resource):
                                             help="the ID of a task that this task is dependent upon (optional, can be multiple).")
 
         self._task_delete_parser = reqparse.RequestParser()
-        self._task_delete_parser.add_argument("task_id", dest="task_id", required=True, help="ID of Task to be deleted.")
+        self._task_delete_parser.add_argument("task_id", dest="task_id", required=True, type=int, help="ID of Task to be deleted.")
 
     def post(self):
         args = self._task_post_parser.parse_args()
@@ -97,7 +97,7 @@ class AttemptManagement(Resource):
         self._attempt_update = reqparse.RequestParser()
         self._attempt_update.add_argument('runner_id', dest='runner_id', required=True,
                                           help='The unique identifier of the runner.')
-        self._attempt_update.add_argument('task_id', dest='task_id', required=True,
+        self._attempt_update.add_argument('task_id', dest='task_id', required=True, type=int,
                                           help='The unique identifier of the task being attempted.')
         self._attempt_update.add_argument('attempt_id', dest='attempt_id', required=True,
                                           help='The unique identifier of the attempt.')
@@ -132,7 +132,7 @@ class AttemptManagement(Resource):
         self._logger.info("AttemptManagement.put: %s" % str(args))
         status = args.status.lower()
         if status == "failed":
-            self._task_manager.fail_attempt(args.task_id, args.attempt_id, "client reported")
+            self._task_manager.fail_attempt(args.task_id, args.attempt_id, "client reported", datetime.now())
         elif status == "completed":
             self._task_manager.complete_attempt(args.task_id, args.attempt_id, datetime.now())
         else:
@@ -176,27 +176,29 @@ class MonitorTasks(Resource):
             in_process = self._task_manager.in_process_tasks()
             for task in in_process:
                 current_runner = ""
-                if task.most_recent_attempt().is_in_process():
-                    current_runner = task.most_recent_attempt().runner
+                attempt_count = self._task_manager.get_task_attempt_count(task.task_id())
+                most_recent_attempt = self._task_manager.get_most_recent_attempt(task.task_id())
+                if most_recent_attempt.is_in_process():
+                    current_runner = most_recent_attempt.runner
                 d = {"task_id": task.task_id(),
                      "status": "In Process",
                      "created": task.created_time.strftime(TIME_FORMAT),
-                     "started": task.started_time().strftime(TIME_FORMAT),
+                     "started": self._task_manager.get_start_time(task.task_id()).strftime(TIME_FORMAT),
                      "name": task.name,
                      "description": task.desc,
                      "command": task.cmd,
                      "dependent_on": self._dependent_on_str(task.dependent_on),
                      "duration": task.duration,
-                     "attempted": task.num_attempts(),
-                     "attempts_left": task.max_attempts - task.num_attempts(),
-                     "attempt_open": task.most_recent_attempt().is_in_process() is True,
+                     "attempted": attempt_count,
+                     "attempts_left": task.max_attempts - attempt_count,
+                     "attempt_open": most_recent_attempt.is_in_process() is True,
                      "current_runner": current_runner
                      }
                 list_of_tasks.append(d)
         elif list_type.lower() == "failed":
             done = self._task_manager.done_tasks()
             for task in done:
-                if task.is_failed():
+                if task.has_failed():
                     d = {"task_id": task.task_id(),
                          "status": "Failed",
                          "created": task.created_time.strftime(TIME_FORMAT),
@@ -204,22 +206,22 @@ class MonitorTasks(Resource):
                          "description": task.desc,
                          "command": task.cmd,
                          "dependencies": self._dependent_on_str(self._task_manager.dependencies(task.task_id())),
-                         "attempts": task.num_attempts()
+                         "attempts": self._task_manager.get_task_attempt_count(task.task_id())
                          }
                     list_of_tasks.append(d)
         elif list_type.lower() == "completed":
             done = self._task_manager.done_tasks()
             for task in done:
-                if task.is_completed():
+                if task.has_completed():
                     d = {"task_id": task.task_id(),
                          "status": "Completed",
                          "created": task.created_time.strftime(TIME_FORMAT),
-                         "finished": task.completed_time().strftime(TIME_FORMAT),
+                         "finished": self._task_manager.get_done_time(task.task_id()).strftime(TIME_FORMAT),
                          "name": task.name,
                          "description": task.desc,
                          "command": task.cmd,
                          "dependencies": self._dependent_on_str(self._task_manager.dependencies(task.task_id())),
-                         "attempts": task.num_attempts()
+                         "attempts": self._task_manager.get_task_attempt_count(task.task_id())
                          }
                     list_of_tasks.append(d)
         else:
