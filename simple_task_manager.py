@@ -333,8 +333,14 @@ class TaskManager(object):
     def get_done_time(self, task_id):
         return self._persistence.get_task_done_time(task_id)
 
+    def get_start_time(self, task_id):
+        return self._persistence.get_task_start_time(task_id)
+
     def get_task_attempts(self, task_id):
         return self._persistence.get_attempts(task_id)
+
+    def get_task_attempt_count(self, task_id):
+        return self._persistence.get_attempt_count(task_id)
 
     def get_most_recent_attempt(self, task_id):
         return self._persistence.get_most_recent_attempt(task_id)
