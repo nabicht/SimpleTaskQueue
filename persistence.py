@@ -99,6 +99,9 @@ class SQLitePersistence:
     UPDATE_ATTEMPT_TO_FAILED = "UPDATE attempts SET done_time=?, fail_reason=?, status=%s WHERE attempt_id=?" % str(TaskAttempt.FAILED_STATUS)
     UPDATE_ATTEMPT_TO_COMPLETE = "UPDATE attempts SET done_time=?, status=%s WHERE attempt_id=?" % str(TaskAttempt.COMPLETED_STATUS)
 
+    DELETE_TASK = "DELETE FROM tasks WHERE task_id=?;"
+    DELETE_TASK_ATTEMPTS = "DELETE FROM attempts WHERE task_id=?;"
+
     def __init__(self, db_file, logger):
         self._db_file = db_file
         self._logger = logger
@@ -492,3 +495,20 @@ class SQLitePersistence:
             return True
         else:
             return False
+
+    def delete_task(self, task_id):
+        deleted = False
+        self._writer.execute('BEGIN EXCLUSIVE')
+        cursor = self._writer.cursor()
+        try:
+            cursor.execute(self.DELETE_TASK_ATTEMPTS, (task_id, ))
+            cursor.execute(self.DELETE_TASK, (task_id, ))
+            deleted = True
+        except Exception as e:
+            cursor.close()
+            self._writer.rollback()
+            self._logger.exception("Error deleting task %s to failed!" % str(task_id))
+        else:
+            cursor.close()
+            self._writer.commit()
+        return deleted
