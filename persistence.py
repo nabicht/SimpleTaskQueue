@@ -74,7 +74,8 @@ class SQLitePersistence:
     # This will probably break if there are no current attempts, so best to do an attempt count first
     GET_TASK_START_TIME = "SELECT start_time FROM attempts WHERE attempt_id = (SELECT MIN(attempt_id) FROM attempts WHERE task_id=?);"
     
-    GET_TASK_DONE_TIME = "SELECT MIN(done_time) AS done_time FROM attempts WHERE task_id=?;"
+    GET_TASK_COMPLETED_TIME = 'SELECT MIN(done_time) AS "done_time [timestamp]" FROM attempts WHERE task_id=? and status=%d;' % TaskAttempt.COMPLETED_STATUS
+    GET_TASK_FAILED_TIME = 'SELECT MAX(done_time) AS "done_time [timestamp]" FROM attempts WHERE task_id=? and status=%d;' % TaskAttempt.FAILED_STATUS
 
     GET_DEPENDENT_ON = "SELECT dependent_on_task_id FROM dependencies WHERE task_id=? ORDER BY dependent_on_task_id;"
     GET_DEPENDENTS = "SELECT task_id FROM dependencies WHERE dependent_on_task_id=? ORDER BY task_id;"
@@ -303,15 +304,23 @@ class SQLitePersistence:
             start_time = row["start_time"]
         return start_time
 
-    def get_task_close_time(self, task_id):
-        cursor = self._reader.cursor()
-        cursor.execute(self.GET_TASK_START_TIME, (task_id,))
-        row = cursor.fetchone()
-        cursor.close()
-        start_time = None
-        if row is not None:
-            start_time = row["start_time"]
-        return start_time
+    def get_task_done_time(self, task_id):
+        done_time = None
+        if self.is_task_completed(task_id):
+            cursor = self._reader.cursor()
+            cursor.execute(self.GET_TASK_COMPLETED_TIME, (task_id,))
+            row = cursor.fetchone()
+            cursor.close()
+            if row is not None:
+                done_time = row["done_time"]
+        elif self.is_task_failed(task_id):
+            cursor = self._reader.cursor()
+            cursor.execute(self.GET_TASK_FAILED_TIME, (task_id,))
+            row = cursor.fetchone()
+            cursor.close()
+            if row is not None:
+                done_time = row["done_time"]
+        return done_time
 
     @staticmethod
     def _row_to_attempt(row):
