@@ -321,7 +321,6 @@ class TaskManager(object):
         if can_delete:
             try:
                 deleted = self._persistence.delete_task(task_id)
-                print("DELETED", deleted)
                 self._logger.info("Task %s and all of its attempts have been deleted")
             except:
                 self._logger.error("Could not delete Task %s.")
