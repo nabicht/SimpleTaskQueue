@@ -67,7 +67,7 @@ class OpenTasks(object):
         for task in no_duration_tasks:
             most_recent_attempt = self._persistence.get_most_recent_attempt(task.task_id())
             if most_recent_attempt is not None and most_recent_attempt.is_failed():
-                attempt_count = self._persistence.get_attempt_count()
+                attempt_count = self._persistence.get_attempt_count(task.task_id())
                 if attempt_count >= task.max_attempts:
                     self._logger.debug("OpenTasks.task_to_retry: Task %s has failed attempt %d of %d. Treating it as failed." %
                                        (str(task.task_id()), attempt_count, task.max_attempts))
