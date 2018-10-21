@@ -77,9 +77,13 @@ class TaskManagement(Resource):
     def delete(self):
         args = self._task_delete_parser.parse_args()
         self._logger.info("TaskManagement.delete: %s" % str(args))
-        deleted = self._task_manager.delete_task(args.task_id)
-        if deleted:
-            return {"status": "task deleted", "task_id": args.task_id}, 200
+        if self._task_manager.get_task(args.task_id) is not None:
+
+            deleted = self._task_manager.delete_task(args.task_id)
+            if deleted:
+                return {"status": "task deleted", "task_id": args.task_id}, 200
+            else:
+                return {"status": "task not deleted", "task_id": args.task_id}, 200  # TODO might not be right status int
         else:
             return {"message": "task for %s not found, cannot delete" % args.task_id}, 400
 
