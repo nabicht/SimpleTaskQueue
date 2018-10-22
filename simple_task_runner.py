@@ -23,6 +23,32 @@ import util
 import logging
 from collections import OrderedDict
 import simple_task_client as stc
+import sys
+from requests.exceptions import ConnectionError
+
+
+def server_interaction(log, func, *args, **kargs):
+    reconnect_wait_time_max = 60  # one minute
+    reconnect_wait_time = .5  # this way the first one will be 1
+    connect_attempts = 0
+    result = None
+    while result is None:
+        connect_attempts += 1
+        reconnect_wait_time = min(reconnect_wait_time * 2, reconnect_wait_time_max)
+        try:
+            result = func(*args, **kargs)
+        except ConnectionError:
+            if connect_attempts <= 50:  # if we get to 50 might as well quit as something definitely is not working
+                if log is not None:
+                    log.warning("Unable to connect to server for %s. Re-trying in %d second(s)." %
+                                (func.__name__, reconnect_wait_time))
+                time.sleep(reconnect_wait_time)
+            else:
+                if log is not None:
+                    log.critical("Could not connect to server for %s after %d attempts. Quiting runner."
+                               % (func.__name__, connect_attempts))
+                    sys.exit(1)
+    return result
 
 
 def main(server, wait_seconds, runner_id, log, risky=False):
@@ -31,8 +57,9 @@ def main(server, wait_seconds, runner_id, log, risky=False):
         log.info("Server: %s" % str(server))
         log.info("Wait Time: %0.6f" % wait_seconds)
         log.info("Risky: %s" % str(risky))
+
     while True:
-        attempt_info = stc.get_next_attempt(server, runner_id)
+        attempt_info = server_interaction(log, stc.get_next_attempt, server, runner_id)
         if attempt_info["status"] == "attempt":
             cmd = attempt_info['command']
             if log is not None:
@@ -42,11 +69,11 @@ def main(server, wait_seconds, runner_id, log, risky=False):
                     subprocess.check_call(cmd, shell=True)
                 else:
                     subprocess.check_call(shlex.split(cmd))
-                stc.report_completed_attempt(server, runner_id, attempt_info['task_id'], attempt_info['attempt_id'])
+                server_interaction(log, stc.report_completed_attempt, server, runner_id, attempt_info['task_id'], attempt_info['attempt_id'])
             except Exception as e:
                 if log is not None:
                     log.exception("Issue running and/or reporting.")
-                stc.report_failed_attempt(server, runner_id, attempt_info['task_id'], attempt_info['attempt_id'], message=str(e))
+                server_interaction(log, stc.report_failed_attempt, server, runner_id, attempt_info['task_id'], attempt_info['attempt_id'], message=str(e))
         else:
             if log is not None:
                 log.info("No attempt to run. Waiting %0.6f" % wait_seconds)
